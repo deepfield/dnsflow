@@ -1,7 +1,9 @@
 /*
  * dcap.h
  *
- * Copyright (c) 2011 DeepField Networks <info@deepfield.net>
+ * Copyright (c) 2011, DeepField Networks, Inc. <info@deepfield.net>
+ * All rights reserved.
+ *
  */
 
 #ifndef __DCAP_H__

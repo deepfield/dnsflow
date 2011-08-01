@@ -1,11 +1,36 @@
 /*
- * dnsflow
+ * dnsflow.c
  *
- * Copyright (c) 2011 DeepField Networks <info@deepfield.net>
+ * Copyright (c) 2011, DeepField Networks, Inc. <info@deepfield.net>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. Neither the name of DeepField Networks, Inc. nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ * 
  */
 
 /* DNS Flow Packet Format
-
    Header:
      version		[1 bytes]
      sets_count		[1 bytes]
@@ -13,7 +38,7 @@
      sequence_number	[4 bytes]
      sets		[variable]
 
-   Set:
+   Data Set:
      client_ip		[4 bytes]
      names_count	[1 byte]
      ips_count		[1 byte]
@@ -21,6 +46,12 @@
      names		[variable] Each is a Nul terminated string.
      ips		[variable] Word-aligned, starts at names + names_len,
      			           each is 4 bytes.
+
+    Stats Set:
+      pkts_captured	[4 bytes]
+      pkts_received	[4 bytes]
+      pkts_dropped	[4 bytes]
+      pkts_ifdropped	[4 bytes] Only supported on some platforms.
  */
 #include <sys/types.h>
 #include <sys/time.h>
@@ -71,6 +102,8 @@
 #define DNSFLOW_PORT			5300
 #define DNSFLOW_UDP_MAX_DSTS		10
 
+#define DNSFLOW_FLAG_STATS		0x0001
+
 #define DNSFLOW_SETS_COUNT_MAX		255
 struct dnsflow_hdr {
 	uint8_t			version;
@@ -87,41 +120,72 @@ struct dnsflow_set_hdr {
 	uint8_t			ips_count;
 	uint16_t		names_len;
 };
-
-struct dns_pkt_data {
+struct dns_data_set {
 	char 			*names[DNSFLOW_MAX_PARSE];
 	int			num_names;
 	in_addr_t		ips[DNSFLOW_MAX_PARSE];
 	int			num_ips;
 };
 
-/* Define so we can dump packets to pcap. */
-struct loopback_header {
-	uint32_t	pf_type;
-	char		pkt[DNSFLOW_PKT_MAX_SIZE];
+struct dnsflow_data_pkt {
+	/* Variable sized pkt, allocate maximum size when it's a data pkt. */
+	char				pkt[1]; /* DNSFLOW_PKT_MAX_SIZE */
 };
+
+
+struct dnsflow_stats_pkt {
+	uint32_t	pkts_captured;
+	uint32_t	pkts_received;
+	uint32_t	pkts_dropped;
+	uint32_t	pkts_ifdropped; /* according to pcap, only supported
+					   on some platforms */
+};
+
+enum dnsflow_buf_type {
+	DNSFLOW_DATA,
+	DNSFLOW_STATS,
+};
+struct dnsflow_buf {
+	uint32_t		db_type;	/* What's in the union */
+	uint32_t		db_len;		/* Size of what's in the pkt,
+						   db_pkt_hdr and below. */
+
+	uint32_t		db_loop_hdr;	/* Holds PF_ type when dumping
+						   straight to pcap file. */
+	struct dnsflow_hdr	db_pkt_hdr;
+	union {
+		struct dnsflow_data_pkt		data_pkt;
+		struct dnsflow_stats_pkt	stats_pkt;
+	} DB_dat;
+};
+#define db_data_pkt	DB_dat.data_pkt
+#define db_stats_pkt	DB_dat.stats_pkt
 
 /*** Globals ***/
 /* pkt building */
-struct loopback_header	loopback_header;
-char			*pkt = loopback_header.pkt;
-int			pkt_num_bytes = 0;
-time_t			last_send = 0;
+static uint32_t			sequence_number = 1;
+static struct dnsflow_buf	*data_buf = NULL;
+static time_t			last_send = 0;
 
-struct event		push_ev;
-struct timeval		push_tv = {1, 0};
+static struct event		push_ev;
+static struct timeval		push_tv = {1, 0};
 
-struct event		sigterm_ev, sigint_ev;
+static struct event		stats_ev;
+static struct timeval		stats_tv = {10, 0};
+
+static struct event		sigterm_ev, sigint_ev;
+
+static uint32_t			pkts_captured = 0;
 
 /* config */
-char 			*default_filter =
-			  "udp and src port 53 and udp[10:2] & 0x8187 = 0x8180";
+static char *default_filter =
+	"udp and src port 53 and udp[10:2] & 0x8187 = 0x8180";
 
-int 			udp_num_dsts = 0;
-struct sockaddr_in	dst_so_addrs[DNSFLOW_UDP_MAX_DSTS];
+static int 			udp_num_dsts = 0;
+static struct sockaddr_in	dst_so_addrs[DNSFLOW_UDP_MAX_DSTS];
 
-pcap_t			*pc_dump = NULL;
-pcap_dumper_t		*pdump = NULL;
+static pcap_t			*pc_dump = NULL;
+static pcap_dumper_t		*pdump = NULL;
 
 
 char *
@@ -227,7 +291,7 @@ dnsflow_dns_check(int pkt_len, uint8_t *dns_pkt)
 }
 
 static void
-dnsflow_dns_data_free(struct dns_pkt_data *data)
+dnsflow_dns_data_free(struct dns_data_set *data)
 {
 	int 	i;
 	for (i = 0; i < data->num_names; i++) {
@@ -236,11 +300,11 @@ dnsflow_dns_data_free(struct dns_pkt_data *data)
 }
 
 /* Caller must free the names returned. */
-static struct dns_pkt_data *
+static struct dns_data_set *
 dnsflow_dns_extract(ldns_pkt *lp)
 {
 	/* Statics */
-	static struct dns_pkt_data	data[1];
+	static struct dns_data_set	data[1];
 
 	ldns_rr_type			rr_type;
 	ldns_rr				*q_rr, *a_rr;
@@ -311,22 +375,19 @@ dnsflow_dns_extract(ldns_pkt *lp)
 }
 
 static void
-dnsflow_pkt_send()
+dnsflow_pkt_send(struct dnsflow_buf *buf)
 {
 	static int 		udp_socket = 0;
 	struct pcap_pkthdr 	pkthdr;
 	int			i;
 
-	if (pkt_num_bytes == 0) {
-		return;
-	}
-
 	if (pdump != NULL) {
-		loopback_header.pf_type = PF_UNSPEC;
 		gettimeofday(&pkthdr.ts, NULL);
-		pkthdr.caplen = pkt_num_bytes + 4; /* 4 for loopback hdr. */
-		pkthdr.len = pkt_num_bytes + 4;
-		pcap_dump((u_char *)pdump, &pkthdr, (u_char *)&loopback_header);
+		buf->db_loop_hdr = PF_UNSPEC;
+		pkthdr.len = buf->db_len + 4; /* 4 for loopback hdr. */
+		pkthdr.caplen = pkthdr.len;
+		pcap_dump((u_char *)pdump, &pkthdr,
+				(u_char *)&buf->db_loop_hdr);
 	}
 
 	if (udp_num_dsts == 0) {
@@ -339,13 +400,23 @@ dnsflow_pkt_send()
 		}
 	}
 	for (i = 0; i < udp_num_dsts; i++) {
-		if (sendto(udp_socket, pkt, pkt_num_bytes, 0,
+		if (sendto(udp_socket, &buf->db_pkt_hdr, buf->db_len, 0,
 				(struct sockaddr *)&dst_so_addrs[i],
 				sizeof(struct sockaddr_in)) < 0) {
 			warnx("send failed");
 		}
 	}
-	pkt_num_bytes = 0;
+}
+
+static void
+dnsflow_pkt_send_data()
+{
+	if (data_buf->db_len == 0) {
+		return;
+	}
+	data_buf->db_pkt_hdr.sequence_number = htonl(sequence_number++);
+	dnsflow_pkt_send(data_buf);
+	data_buf->db_len = 0;
 	last_send = time(NULL);
 }
 
@@ -355,35 +426,31 @@ dnsflow_push_cb(int fd, short event, void *arg)
 	time_t		now = time(NULL);
 
 	if (now - last_send >= push_tv.tv_sec) {
-		dnsflow_pkt_send();
+		dnsflow_pkt_send_data();
 	}
 	evtimer_add(&push_ev, &push_tv);
 }
 
 static void
-dnsflow_pkt_build(in_addr_t client_ip, struct dns_pkt_data *dns_data)
+dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 {
-	/* Statics */
-	static int		pkt_num_sets = 0;
-	static uint32_t		sequence_number = 1;
-
 	struct dnsflow_hdr	*dnsflow_hdr;
 	struct dnsflow_set_hdr	*set_hdr;
-	char			*pkt_cur, *pkt_end, *names_start;
+	char			*pkt_start, *pkt_cur, *pkt_end, *names_start;
 	int			i, len;
 	in_addr_t		*ip_ptr;
-
-	dnsflow_hdr = (struct dnsflow_hdr *)pkt;
-	if (pkt_num_bytes == 0) {
+	
+	dnsflow_hdr = &data_buf->db_pkt_hdr;
+	pkt_start = (char *)dnsflow_hdr;
+	if (data_buf->db_len == 0) {
 		/* Starting a new pkt. */
 		bzero(dnsflow_hdr, sizeof(struct dnsflow_hdr));
+		data_buf->db_len += sizeof(struct dnsflow_hdr);
 		dnsflow_hdr->version = DNSFLOW_VERSION;
-		dnsflow_hdr->sequence_number = htonl(sequence_number++);
-		pkt_num_bytes += sizeof(struct dnsflow_hdr);
-		pkt_num_sets = 0;
-		pkt_end = pkt + DNSFLOW_PKT_MAX_SIZE - 1;
+		dnsflow_hdr->sets_count = 0;
+		pkt_end = pkt_start + DNSFLOW_PKT_MAX_SIZE - 1;
 	}
-	pkt_cur = pkt + pkt_num_bytes;
+	pkt_cur = pkt_start + data_buf->db_len;
 
 	/* Start building new set. */
 	set_hdr = (struct dnsflow_set_hdr *)pkt_cur;
@@ -394,38 +461,37 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_pkt_data *dns_data)
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
 	set_hdr->ips_count =
 		MIN(dns_data->num_ips, DNSFLOW_IPS_COUNT_MAX);
-	pkt_num_bytes += sizeof(struct dnsflow_set_hdr);
-	pkt_cur = pkt + pkt_num_bytes;
+	data_buf->db_len += sizeof(struct dnsflow_set_hdr);
+	pkt_cur = pkt_start + data_buf->db_len;
 
 	names_start = pkt_cur;
 	for (i = 0; i < set_hdr->names_count; i++) {
 		/* XXX Not checking that I don't run off the end of the pkt,
 		 * but there's no way we ever could (I think). */
 		len = strlcpy(pkt_cur, dns_data->names[i], pkt_end - pkt_cur);
-		pkt_num_bytes += len + 1; /* len doesn't include Nul byte. */
-		pkt_cur = pkt + pkt_num_bytes;
+		data_buf->db_len += len + 1; /* len doesn't include Nul byte. */
+		pkt_cur = pkt_start + data_buf->db_len;
 	}
-	while (pkt_num_bytes % 4 != 0) {
+	while (data_buf->db_len % 4 != 0) {
 		/* Pad to word boundary. */
-		pkt[pkt_num_bytes++] = '\0';
+		pkt_start[data_buf->db_len++] = '\0';
 	}
-	pkt_cur = pkt + pkt_num_bytes;
+	pkt_cur = pkt_start + data_buf->db_len;
 	set_hdr->names_len = htons(pkt_cur - names_start);
 
 	for (i = 0; i < set_hdr->ips_count; i++) {
 		ip_ptr = (in_addr_t *)pkt_cur;
 		*ip_ptr = dns_data->ips[i];
-		pkt_num_bytes += sizeof(in_addr_t);
-		pkt_cur = pkt + pkt_num_bytes;
+		data_buf->db_len += sizeof(in_addr_t);
+		pkt_cur = pkt_start + data_buf->db_len;
 	}
 
-	pkt_num_sets++;
-	dnsflow_hdr->sets_count = pkt_num_sets;
+	dnsflow_hdr->sets_count++;
 
-	if (pkt_num_bytes >= DNSFLOW_PKT_TARGET_SIZE ||
-	    pkt_num_sets == DNSFLOW_SETS_COUNT_MAX) {
+	if (data_buf->db_len >= DNSFLOW_PKT_TARGET_SIZE ||
+	    dnsflow_hdr->sets_count == DNSFLOW_SETS_COUNT_MAX) {
 		/* Send */
-		dnsflow_pkt_send();
+		dnsflow_pkt_send_data();
 	}
 }
 
@@ -438,7 +504,9 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 	uint8_t			*udp_data;
 
 	ldns_pkt		*lp;
-	struct dns_pkt_data	*dns_data;
+	struct dns_data_set	*dns_data;
+
+	pkts_captured++;
 
 	if ((ip = ip4_check(pkt_len, ip_pkt)) == NULL) {
 		/* Bad pkt */
@@ -473,6 +541,40 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 	/* Free names */
 	dnsflow_dns_data_free(dns_data);
 
+}
+
+static void
+dnsflow_stats_cb(int fd, short event, void *arg) 
+{
+	struct pcap_stat		ps;
+	struct dcap			*dcap = (struct dcap *)arg;
+	struct dnsflow_buf		buf;
+
+	evtimer_add(&stats_ev, &stats_tv);
+
+	bzero(&ps, sizeof(ps));
+	if (pcap_stats(dcap->pcap, &ps) < 0) {
+		warnx("pcap_stats: %s", pcap_geterr(dcap->pcap));
+		return;
+	}
+
+	bzero(&buf, sizeof(buf));
+
+	buf.db_type = DNSFLOW_STATS;
+	buf.db_len = sizeof(struct dnsflow_hdr) +
+		sizeof(struct dnsflow_stats_pkt);
+
+	buf.db_pkt_hdr.version = DNSFLOW_VERSION;
+	buf.db_pkt_hdr.sets_count = 1;
+	buf.db_pkt_hdr.flags = htons(DNSFLOW_FLAG_STATS);
+	buf.db_pkt_hdr.sequence_number = htonl(sequence_number++);
+
+	buf.db_stats_pkt.pkts_captured = htonl(pkts_captured);
+	buf.db_stats_pkt.pkts_received = htonl(ps.ps_recv);
+	buf.db_stats_pkt.pkts_dropped = htonl(ps.ps_drop);
+	buf.db_stats_pkt.pkts_ifdropped = htonl(ps.ps_ifdrop);
+
+	dnsflow_pkt_send(&buf);
 }
 
 static void
@@ -582,6 +684,7 @@ main(int argc, char *argv[])
 	bzero(&sigterm_ev, sizeof(sigterm_ev));
 	signal_set(&sigterm_ev, SIGTERM, signal_cb, NULL);
 	signal_add(&sigterm_ev, NULL);
+
 	bzero(&sigint_ev, sizeof(sigint_ev));
 	signal_set(&sigint_ev, SIGINT, signal_cb, NULL);
 	signal_add(&sigint_ev, NULL);
@@ -596,6 +699,11 @@ main(int argc, char *argv[])
 		dcap = dcap_init_file(pcap_file_read, filter, dnsflow_dcap_cb);
 	} else {
 		dcap = dcap_init_live(intf_name, filter, dnsflow_dcap_cb);
+
+		/* Send pcap stats every 10sec. */
+		bzero(&stats_ev, sizeof(stats_ev));
+		evtimer_set(&stats_ev, dnsflow_stats_cb, dcap);
+		evtimer_add(&stats_ev, &stats_tv);
 	}
 	if (dcap == NULL) {
 		exit(1);
@@ -610,10 +718,15 @@ main(int argc, char *argv[])
 		}
 	}
 
+	/* B/c of the union, this allocates more than max for the pkt, but
+	 * not a big deal. */
+	data_buf = calloc(1, sizeof(struct dnsflow_buf) + DNSFLOW_PKT_MAX_SIZE);
+	data_buf->db_type = DNSFLOW_DATA;
+
 	if (pcap_file_read != NULL) {
 		dcap_loop_all(dcap);
 		dcap_close(dcap);
-		dnsflow_pkt_send();	/* Send last pkt. */
+		dnsflow_pkt_send_data();	/* Send last pkt. */
 	} else {
 		rv = event_dispatch();
 		dcap_close(dcap);
@@ -625,6 +738,7 @@ main(int argc, char *argv[])
 		pcap_close(pc_dump);
 	}
 
+	free(data_buf);
 	return (0);
 }
 

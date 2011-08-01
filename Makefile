@@ -17,3 +17,4 @@ dnsflow: dnsflow.c dcap.c dcap.h
 	$(CC) dnsflow.c dcap.c -o dnsflow $(LIBS)
 clean:
 	@rm -f *.o dnsflow
+	@rm -rf *.dSYM
