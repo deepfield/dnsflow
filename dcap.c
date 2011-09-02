@@ -28,7 +28,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * 
- * sdfdsfsfsdfsdfdsafdsafsdf
  */
 #include <sys/types.h>
 #include <sys/time.h>
@@ -268,8 +267,4 @@ dcap_close(struct dcap *dcap)
 	pcap_close(dcap->pcap);
 	free(dcap);
 }
-
-
-
-
 

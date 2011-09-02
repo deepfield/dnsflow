@@ -1,7 +1,6 @@
 OS = $(shell uname)
 
-CC_OPTS =
-CC = gcc $(CC_OPTS) -g -L/usr/lib -Wall -D_BSD_SOURCE
+CC = gcc -g -L/usr/lib -Wall -O3 -D_BSD_SOURCE
 
 LIBS_DEFAULT = -lldns -lpcap -levent
 

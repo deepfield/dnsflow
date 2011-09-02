@@ -448,9 +448,9 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 		data_buf->db_len += sizeof(struct dnsflow_hdr);
 		dnsflow_hdr->version = DNSFLOW_VERSION;
 		dnsflow_hdr->sets_count = 0;
-		pkt_end = pkt_start + DNSFLOW_PKT_MAX_SIZE - 1;
 	}
 	pkt_cur = pkt_start + data_buf->db_len;
+	pkt_end = pkt_start + DNSFLOW_PKT_MAX_SIZE - 1;
 
 	/* Start building new set. */
 	set_hdr = (struct dnsflow_set_hdr *)pkt_cur;
