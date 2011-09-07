@@ -56,7 +56,13 @@ def process_pkt(dl_type, ts, buf):
 
     src_ip = socket.inet_ntop(socket.AF_INET, ip_pkt.src)
     if src_ip not in summary['senders']:
-        summary['senders'][src_ip] = {'pkts_recv':0, 'pkts_invalid':0}
+        summary['senders'][src_ip] = {
+                'pkts_recv':    0,
+                'pkts_invalid': 0,
+                'pkts_missing': 0,
+                'pkts_ooo':     0,
+                'seq_max':      0
+                }
     sender = summary['senders'][src_ip]
     sender['pkts_recv'] += 1
 
@@ -73,6 +79,25 @@ def process_pkt(dl_type, ts, buf):
         sender['pkts_invalid'] += 1
         return
    
+    # Track missing pkts.
+    if sender['seq_max'] == 0:
+        # Startup
+        sender['seq_max'] = seq_num
+    elif sender['seq_max'] + 1 == seq_num:
+        # Normal case
+        sender['seq_max'] = seq_num
+    elif sender['seq_max'] < seq_num:
+        # Missing pkts
+        sender['pkts_missing'] += seq_num - sender['seq_max']
+        sender['seq_max'] = seq_num
+    elif sender['seq_max'] > seq_num:
+        # Missing pkt arrived
+        sender['pkts_missing'] -= 1
+        sender['pkts_ooo'] += 1
+    else:
+        # seq_max == seq_num, shouldn't happen (maybe weird duplicate)
+        pass
+
     cp += struct.calcsize(fmt)
     if verbosity > 0:
         ip = eth.data
@@ -112,31 +137,29 @@ def process_pkt(dl_type, ts, buf):
             print 'DATA|%s|%s|%s' % (client_ip, ','.join(names), ','.join(ips))
 
                 
-def read_pcapfile(pcap_files):
+def read_pcapfile(pcap_files, filter):
     for pcap_file in pcap_files:
-        try:
-            f = gzip.open(pcap_file, 'rb')
-            pcap = dpkt.pcap.Reader(f)
-        except:
-            try:
-                f = open(pcap_file, 'rb')
-                pcap = dpkt.pcap.Reader(f)
-            except:
-                print 'Failed opening file: %s' % (pcap_file)
-                continue
-
-        pcap.setfilter("udp and dst port 5300", optimize=1)
+        # XXX dpkt pcap doesn't support filters and there's no way to pass
+        # a gzip fd to pylibpcap. Bummer.
+        p = pcap.pcapObject()
+        p.open_offline(pcap_file)
+        # filter, optimize, netmask
+        p.setfilter(filter, 1, 0)
 
         print 'Parsing file: %s' % (pcap_file)
-        for ts, buf in pcap:
-            process_pkt(pcap.datalink(), ts, buf)
+        while 1:
+            rv = p.next()
+            if rv == None:
+                break
+            pktlen, buf, ts = rv
+            process_pkt(p.datalink(), ts, buf)
 
-def mode_livecapture(interface):
+def mode_livecapture(interface, filter):
     print 'Capturing on', interface
     p = pcap.pcapObject()
     p.open_live(interface, 65535, 1, 100)
     # filter, optimize, netmask
-    p.setfilter('udp and dst port 5300', 1, 0)
+    p.setfilter(filter, 1, 0)
 
     try:
         while 1:
@@ -152,10 +175,10 @@ def mode_livecapture(interface):
 def main(argv):
     global verbosity
 
-    usage = ('Usage: %s [-v] [-s] [-r pcap_file] [-i interface]' % (argv[0]))
+    usage = ('Usage: %s [-v] [-s] [-f filter] [-F filter] -r pcap_file or -i interface' % (argv[0]))
 
     try:
-        opts, args = getopt.getopt(argv[1:], 'i:r:sv')
+        opts, args = getopt.getopt(argv[1:], 'f:F:i:r:sv')
     except getopt.GetoptError:
         print >>sys.stderr, usage
         return 1
@@ -163,6 +186,9 @@ def main(argv):
     filename = None
     interface = None
     print_summary = False
+
+    base_filter = 'udp and dst port 5300'
+    filter = base_filter
     
     for o, a in opts:
         if o == '-v':
@@ -173,11 +199,17 @@ def main(argv):
             interface = a
         elif o == '-s':
             print_summary = True
+        elif o == '-f':
+            # extra filter
+            filter = '(%s) and (%s)' % (base_filter, a)
+        elif o == '-F':
+            # complete filter
+            filter = a
 
     if filename is not None:
-        read_pcapfile([filename])
+        read_pcapfile([filename], filter)
     elif interface is not None:
-        mode_livecapture(interface)
+        mode_livecapture(interface, filter)
     else:
         print usage
         sys.exit(1)
@@ -185,8 +217,9 @@ def main(argv):
     if print_summary:
         print '\nSender Summary:'
         for src_ip, info in summary['senders'].iteritems():
-            print '  %-20s pkts_received=%-10s invalid_pkts=%-10s' % (src_ip,
-                    info['pkts_recv'], info['pkts_invalid'])
+            print '  %s' % (src_ip)
+            for k, v in info.iteritems():
+                print '    %-15s %15s' % (k, v)
 
 if __name__ == '__main__':
     main(sys.argv)
