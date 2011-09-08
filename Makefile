@@ -6,7 +6,8 @@ LIBS_DEFAULT = -lldns -lpcap -levent
 
 ifeq ($(OS), Linux)
 	LIBS_LINUX += -lrt -lcrypto -lbsd
-	LIBS = -Wl,-Bstatic $(LIBS_DEFAULT) $(LIBS_LINUX) -Wl,-Bdynamic
+	#LIBS = -Wl,-Bstatic $(LIBS_DEFAULT) $(LIBS_LINUX) -Wl,-Bdynamic
+	LIBS = $(LIBS_DEFAULT) $(LIBS_LINUX)
 else
 	LIBS = $(LIBS_DEFAULT)
 endif
