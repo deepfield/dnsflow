@@ -175,7 +175,8 @@ static uint32_t			pkts_captured = 0;
 
 /* config */
 static char *default_filter =
-	"udp and src port 53 and udp[10:2] & 0x8187 = 0x8180";
+	"(udp and src port 53 and udp[10:2] & 0x8187 = 0x8180) or "
+	"(vlan and (udp and src port 53 and udp[10:2] & 0x8187 = 0x8180))";
 
 static int 			udp_num_dsts = 0;
 static struct sockaddr_in	dst_so_addrs[DNSFLOW_UDP_MAX_DSTS];
