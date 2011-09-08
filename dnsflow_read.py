@@ -20,6 +20,7 @@ import struct
 import ipaddr
 
 verbosity = 0
+ts_level = 0    # timestamp level
 summary = {
         'senders': {}
         }
@@ -27,7 +28,7 @@ summary = {
 DNSFLOW_FLAG_STATS = 0x0001
 
 def process_pkt(dl_type, ts, buf):
-    global summary, verbosity
+    global summary, verbosity, ts_level
 
     if dl_type == dpkt.pcap.DLT_NULL:
         # Loopback
@@ -40,10 +41,12 @@ def process_pkt(dl_type, ts, buf):
             # dnsflow dumped straight to pcap
             dnsflow_pkt = lo.data
             ip_pkt = None
+            src_ip = '0.0.0.0'
         elif lo.family == socket.AF_INET:
             # dl, ip, udp, dnsflow_pkt
             dnsflow_pkt = lo.data.data.data
             ip_pkt = lo.data
+            src_ip = socket.inet_ntop(socket.AF_INET, ip_pkt.src)
     elif dl_type == dpkt.pcap.DLT_EN10MB:
         # Ethernet
         try:
@@ -53,8 +56,8 @@ def process_pkt(dl_type, ts, buf):
             return
         dnsflow_pkt = eth.data.data.data
         ip_pkt = eth.data
+        src_ip = socket.inet_ntop(socket.AF_INET, ip_pkt.src)
 
-    src_ip = socket.inet_ntop(socket.AF_INET, ip_pkt.src)
     if src_ip not in summary['senders']:
         summary['senders'][src_ip] = {
                 'pkts_recv':    0,
@@ -72,6 +75,7 @@ def process_pkt(dl_type, ts, buf):
     fmt = '!BBHI'
     vers, sets_count, flags, seq_num = struct.unpack(fmt,
             dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
+    cp += struct.calcsize(fmt)
 
     # Only Version 0, so far
     if vers != 0 or sets_count == 0:
@@ -98,11 +102,12 @@ def process_pkt(dl_type, ts, buf):
         # seq_max == seq_num, shouldn't happen (maybe weird duplicate)
         pass
 
-    cp += struct.calcsize(fmt)
-    if verbosity > 0:
-        ip = eth.data
-        ip = socket.inet_ntoa(ip.src)
-        print 'HEADER|%s|%d|%d|%d' % (ip, sets_count, flags, seq_num)
+    if ts_level >= 2:
+        tstr = time.strftime('%Y%m%d:%H:%M:%S', time.gmtime(ts))
+    else:
+        tstr = time.strftime('%H:%M:%S', time.gmtime(ts))
+
+    print 'HEADER|%s|%s|%d|%d|%d' % (src_ip, tstr, sets_count, flags, seq_num)
     
     if flags & DNSFLOW_FLAG_STATS:
         fmt = '!4I'
@@ -110,6 +115,10 @@ def process_pkt(dl_type, ts, buf):
         print "STATS|%s" % ('|'.join([str(x) for x in stats]))
     else:
         # data pkt
+        if ts_level >= 1:
+            data_ts = '%s|' % (tstr)
+        else:
+            data_ts = ''
         for i in range(sets_count):
             # client_ip, names_count, ips_count, names_len
             fmt = '!IBBH'
@@ -134,7 +143,8 @@ def process_pkt(dl_type, ts, buf):
             cp += struct.calcsize(fmt)
             ips = [str(ipaddr.IPAddress(x)) for x in ips]
 
-            print 'DATA|%s|%s|%s' % (client_ip, ','.join(names), ','.join(ips))
+            print 'DATA|%s|%s%s|%s' % (client_ip, data_ts,
+                    ','.join(names), ','.join(ips))
 
                 
 def read_pcapfile(pcap_files, filter):
@@ -144,6 +154,8 @@ def read_pcapfile(pcap_files, filter):
         p = pcap.pcapObject()
         p.open_offline(pcap_file)
         # filter, optimize, netmask
+        # XXX This doesn't work with dump straight to pcap.
+        # For now use -F "" in that case.
         p.setfilter(filter, 1, 0)
 
         print 'Parsing file: %s' % (pcap_file)
@@ -173,12 +185,12 @@ def mode_livecapture(interface, filter):
    
 
 def main(argv):
-    global verbosity
+    global verbosity, ts_level
 
-    usage = ('Usage: %s [-v] [-s] [-f filter] [-F filter] -r pcap_file or -i interface' % (argv[0]))
+    usage = ('Usage: %s [-stv] [-f filter] [-F filter] -r pcap_file or -i interface' % (argv[0]))
 
     try:
-        opts, args = getopt.getopt(argv[1:], 'f:F:i:r:sv')
+        opts, args = getopt.getopt(argv[1:], 'f:F:i:r:stv')
     except getopt.GetoptError:
         print >>sys.stderr, usage
         return 1
@@ -193,6 +205,8 @@ def main(argv):
     for o, a in opts:
         if o == '-v':
             verbosity += 1
+        elif o == '-t':
+            ts_level += 1
         elif o == '-r':
             filename = a
         elif o == '-i':
