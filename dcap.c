@@ -55,10 +55,6 @@
 #include <net/ethernet.h>
 #include <event.h>
 
-#ifdef __linux__
-#include <bsd/string.h>
-#endif
-
 #include "dcap.h"
 
 static int

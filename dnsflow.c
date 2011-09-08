@@ -79,11 +79,6 @@
 #include <ldns/ldns.h>
 #include <event.h>
 
-/* Note, for mac, check for __APPLE__ */
-#ifdef __linux__
-#include <bsd/string.h>
-#endif
-
 #include "dcap.h"
 
 
@@ -122,6 +117,7 @@ struct dnsflow_set_hdr {
 };
 struct dns_data_set {
 	char 			*names[DNSFLOW_MAX_PARSE];
+	int			name_lens[DNSFLOW_MAX_PARSE];
 	int			num_names;
 	in_addr_t		ips[DNSFLOW_MAX_PARSE];
 	int			num_ips;
@@ -320,9 +316,21 @@ dnsflow_dns_extract(ldns_pkt *lp)
 	data->num_ips = 0;
 
 	q_rr = ldns_rr_list_rr(ldns_pkt_question(lp), 0);
+
+	
+	/* ldns_rdf_size() returns the uncompressed length of an
+	 * encoded name. This happens to exactly equal the lenth of the name
+	 * as a Nul-terminated dotted string. */
+	if (ldns_rdf_size(ldns_rr_owner(q_rr)) > LDNS_MAX_DOMAINLEN) {
+		/* I believe this should never happen for valid DNS. */
+		printf("Invalid query string\n");
+		return (NULL);
+	}
 	str = ldns_rdf2str(ldns_rr_owner(q_rr));
 	/* XXX remove root dot. */
-	data->names[data->num_names++] = str;
+	data->names[data->num_names] = str;
+	data->name_lens[data->num_names] = ldns_rdf_size(ldns_rr_owner(q_rr));
+	data->num_names++;
 
 	for (i = 0; i < ldns_pkt_ancount(lp); i++) {
 		a_rr = ldns_rr_list_rr(ldns_pkt_answer(lp), i);
@@ -346,8 +354,17 @@ dnsflow_dns_extract(ldns_pkt *lp)
 					printf("Too many names\n");
 					continue;
 				}
+				if (ldns_rdf_size(rdf) > LDNS_MAX_DOMAINLEN) {
+					/* Again, I believe this should never
+					 * happen. */
+					printf("Invalid name\n");
+					continue;
+				}
 				str = ldns_rdf2str(rdf);
-				data->names[data->num_names++] = str;
+				data->names[data->num_names] = str;
+				data->name_lens[data->num_names] =
+					ldns_rdf_size(rdf);
+				data->num_names++;
 			} else if (rr_type == LDNS_RR_TYPE_A) {
 				if (data->num_ips == DNSFLOW_MAX_PARSE) {
 					printf("Too many ips\n");
@@ -431,13 +448,14 @@ dnsflow_push_cb(int fd, short event, void *arg)
 	evtimer_add(&push_ev, &push_tv);
 }
 
+/* XXX Need more care to prevent buffer overruns. */
 static void
 dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 {
 	struct dnsflow_hdr	*dnsflow_hdr;
 	struct dnsflow_set_hdr	*set_hdr;
 	char			*pkt_start, *pkt_cur, *pkt_end, *names_start;
-	int			i, len;
+	int			i;
 	in_addr_t		*ip_ptr;
 	
 	dnsflow_hdr = &data_buf->db_pkt_hdr;
@@ -466,10 +484,14 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 
 	names_start = pkt_cur;
 	for (i = 0; i < set_hdr->names_count; i++) {
-		/* XXX Not checking that I don't run off the end of the pkt,
-		 * but there's no way we ever could (I think). */
-		len = strlcpy(pkt_cur, dns_data->names[i], pkt_end - pkt_cur);
-		data_buf->db_len += len + 1; /* len doesn't include Nul byte. */
+		if (dns_data->name_lens[i] > pkt_end - pkt_cur) {
+			/* Not enough room. Shouldn't happen. */
+			printf("Pkt create error\n");
+			data_buf->db_len = 0;
+			return;
+		}
+		strcpy(pkt_cur, dns_data->names[i]);
+		data_buf->db_len += dns_data->name_lens[i];
 		pkt_cur = pkt_start + data_buf->db_len;
 	}
 	while (data_buf->db_len % 4 != 0) {
