@@ -26,8 +26,6 @@ cfg = {
         'regex':        None  # stores the compiled regex
         }
 
-senders = {}
-
 DNSFLOW_FLAG_STATS = 0x0001
 
 #
@@ -183,7 +181,7 @@ def print_parsed_pkt(pkt):
                     ','.join(data['names']), ','.join(data['ips']))
 
                 
-def read_pcapfile(pcap_files, pcap_filter):
+def read_pcapfiles(pcap_files, pcap_filter, callback):
     for pcap_file in pcap_files:
         print 'FILE|%s' % (pcap_file)
         # XXX dpkt pcap doesn't support filters and there's no way to pass
@@ -204,9 +202,9 @@ def read_pcapfile(pcap_files, pcap_filter):
             if err is not None:
                 print err
                 continue
-            print_parsed_pkt(pkt)
+            callback(pkt)
 
-def mode_livecapture(interface, pcap_filter):
+def mode_livecapture(interface, pcap_filter, callback):
     print 'Capturing on', interface
     p = pcap.pcapObject()
     p.open_live(interface, 65535, 1, 100)
@@ -222,7 +220,7 @@ def mode_livecapture(interface, pcap_filter):
                 if err is not None:
                     print err
                     continue
-                print_parsed_pkt(pkt)
+                callback(pkt)
 
     except KeyboardInterrupt:
         print '\nshutting down'
@@ -273,19 +271,12 @@ def main(argv):
     pcap_files.extend(args)
 
     if len(pcap_files) > 0:
-        read_pcapfile(pcap_files, pcap_filter)
+        read_pcapfiles(pcap_files, pcap_filter, print_parsed_pkt)
     elif interface is not None:
-        mode_livecapture(interface, pcap_filter)
+        mode_livecapture(interface, pcap_filter, print_parsed_pkt)
     else:
         print usage
         sys.exit(1)
-
-    if print_summary:
-        print '\nSender Summary:'
-        for src_ip, info in senders.iteritems():
-            print '  %s' % (src_ip)
-            for k, v in info.iteritems():
-                print '    %-15s %15s' % (k, v)
 
 if __name__ == '__main__':
     main(sys.argv)
