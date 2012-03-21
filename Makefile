@@ -18,3 +18,6 @@ dnsflow: dnsflow.c dcap.c dcap.h
 clean:
 	@rm -f *.o dnsflow
 	@rm -rf *.dSYM
+
+install: dnsflow
+	@install -cv dnsflow /usr/local/sbin
