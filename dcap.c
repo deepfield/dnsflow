@@ -126,14 +126,15 @@ dcap_event_cb(int fd, short event, void *arg)
 
 
 struct dcap *
-dcap_init_live(char *intf_name, char *filter, dcap_handler callback)
+dcap_init_live(char *intf_name, int promisc, char *filter,
+		dcap_handler callback)
 {
 
 	char			errbuf[PCAP_ERRBUF_SIZE];
         struct bpf_program      bpf;
 	struct dcap		*dcap = NULL;
 	pcap_t			*pcap = NULL;
-	int			snaplen, to_ms, promisc;
+	int			snaplen, to_ms;
 	
 	if (intf_name == NULL) {
 		if ((intf_name = pcap_lookupdev(errbuf)) == NULL) {
@@ -147,7 +148,6 @@ dcap_init_live(char *intf_name, char *filter, dcap_handler callback)
 	 * looks like pcap tries to be smart about picking a default, but
 	 * we may need to adjust. */
 	snaplen = 65535;	/* Max pkt size? */
-	promisc = 0;
 	to_ms = 100;		/* In theory, the time for bpf to buffer
 				   before marking the fd readable. Although,
 				   apparently doesn't work on linux. */

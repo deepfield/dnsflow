@@ -27,7 +27,7 @@ struct dcap {
 
 struct dcap * dcap_init_file(char *filename, char *filter,
 		dcap_handler callback);
-struct dcap * dcap_init_live(char *intf_name, char *filter,
+struct dcap * dcap_init_live(char *intf_name, int promisc, char *filter,
 		dcap_handler callback);
 void dcap_loop_all(struct dcap *dcap);
 void dcap_close(struct dcap *dcap);

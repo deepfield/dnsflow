@@ -636,7 +636,7 @@ usage(void)
 {
 	extern char *__progname;
 
-	fprintf(stderr, "Usage: %s [-h] [-i interface] [-r pcap_file] "
+	fprintf(stderr, "Usage: %s [-hp] [-i interface] [-r pcap_file] "
 			"[-f filter_expression]\n",
 		__progname);
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
@@ -648,19 +648,22 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int			c, rv;
+	int			c, rv, promisc = 1;
 	char			*pcap_file_read = NULL, *pcap_file_write = NULL;
 	char			*filter = NULL, *intf_name = NULL;
 	struct dcap		*dcap = NULL;
 	struct sockaddr_in	*so_addr = NULL;
 
-	while ((c = getopt(argc, argv, "i:r:f:u:w:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:r:f:pu:w:h")) != -1) {
 		switch (c) {
 		case 'i':
 			intf_name = optarg;
 			break;
 		case 'f':
 			filter = optarg;
+			break;
+		case 'p':
+			promisc = 0;
 			break;
 		case 'r':
 			pcap_file_read = optarg;
@@ -721,7 +724,8 @@ main(int argc, char *argv[])
 	if (pcap_file_read != NULL) {
 		dcap = dcap_init_file(pcap_file_read, filter, dnsflow_dcap_cb);
 	} else {
-		dcap = dcap_init_live(intf_name, filter, dnsflow_dcap_cb);
+		dcap = dcap_init_live(intf_name, promisc, filter,
+				dnsflow_dcap_cb);
 
 		/* Send pcap stats every 10sec. */
 		bzero(&stats_ev, sizeof(stats_ev));
