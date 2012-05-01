@@ -1,0 +1,78 @@
+10:47:50 DATA: num_names: 2, num_ips: 3, host names: mail.google.com., googlemail.l.google.com., ips: 74.125.225.86, 74.125.225.87, 74.125.225.85
+10:48:03 DATA: num_names: 1, num_ips: 16, host names: plus.google.com., ips: 74.125.225.78, 74.125.225.79, 74.125.225.64, 74.125.225.65, 74.125.225.66, 74.125.225.67, 74.125.225.68, 74.125.225.69, 74.125.225.70, 74.125.225.71, 74.125.225.72, 74.125.225.73, 74.125.225.74, 74.125.225.75, 74.125.225.76, 74.125.225.77
+12:01:20 DATA: num_names: 1, num_ips: 4, host names: cnn.com., ips: 157.166.255.19, 157.166.226.25, 157.166.226.26, 157.166.255.18
+12:01:20 DATA: num_names: 1, num_ips: 4, host names: www.cnn.com., ips: 157.166.226.25, 157.166.226.26, 157.166.255.18, 157.166.255.19
+12:01:20 DATA: num_names: 2, num_ips: 3, host names: i.cdn.turner.com., cdn.cnn.com.c.footprint.net., ips: 198.78.216.126, 4.27.3.254, 8.26.215.126
+12:01:20 DATA: num_names: 2, num_ips: 3, host names: i2.cdn.turner.com., cdn.cnn.com.c.footprint.net., ips: 8.26.215.126, 198.78.216.126, 4.27.3.254
+12:01:20 DATA: num_names: 3, num_ips: 2, host names: z.cdn.turner.com., z.cdn.turner.com.edgesuite.net., a1755.g.akamai.net., ips: 192.122.184.80, 192.122.184.91
+12:01:21 DATA: num_names: 3, num_ips: 2, host names: content.dl-rms.com., content.dl-rms.com.edgesuite.net., a1666.x.akamai.net., ips: 192.122.184.90, 192.122.184.81
+12:01:21 DATA: num_names: 3, num_ips: 2, host names: content.dl-rms.com., content.dl-rms.com.edgesuite.net., a1666.x.akamai.net., ips: 192.122.184.90, 192.122.184.81
+12:01:21 DATA: num_names: 3, num_ips: 2, host names: icompass.insightexpressai.com., icompass.insightexpressai.com.edgesuite.net., a84.g.akamai.net., ips: 192.122.184.89, 192.122.184.99
+12:01:21 DATA: num_names: 1, num_ips: 1, host names: js.revsci.net., ips: 74.217.1.81
+12:01:22 DATA: num_names: 1, num_ips: 1, host names: ads.cnn.com., ips: 157.166.255.218
+12:01:22 DATA: num_names: 2, num_ips: 1, host names: toes.cnn.com., ads.cnn.com., ips: 157.166.255.218
+12:01:22 DATA: num_names: 1, num_ips: 1, host names: ad.insightexpressai.com., ips: 209.244.156.19
+12:01:23 DATA: num_names: 2, num_ips: 1, host names: ad.doubleclick.net., dart.l.doubleclick.net., ips: 74.125.225.91
+12:01:23 DATA: num_names: 3, num_ips: 2, host names: js.adsonar.com., js1.adsonar.com.edgesuite.net., a950.g.akamai.net., ips: 192.122.184.88, 192.122.184.90
+12:01:23 DATA: num_names: 1, num_ips: 2, host names: secure-us.imrworldwide.com., ips: 138.108.7.20, 138.108.6.20
+12:01:23 DATA: num_names: 2, num_ips: 9, host names: metrics.cnn.com., cnn.122.2o7.net., ips: 66.235.143.121, 66.235.142.2, 66.235.142.3, 66.235.142.14, 66.235.142.20, 66.235.142.24, 66.235.142.57, 66.235.142.58, 66.235.143.118
+12:01:23 DATA: num_names: 2, num_ips: 1, host names: www.adfusion.com., adfusion.com., ips: 67.192.232.82
+12:01:23 DATA: num_names: 2, num_ips: 1, host names: ads.adsonar.com., ads.adsonar.akadns.net., ips: 207.200.74.25
+12:01:23 DATA: num_names: 3, num_ips: 1, host names: d3.zedo.com., wac.459B.edgecastcdn.net., gp1.wac.v4cdn.net., ips: 93.184.216.169
+12:01:23 DATA: num_names: 2, num_ips: 1, host names: s0.2mdn.net., s0-2mdn-net.l.google.com., ips: 74.125.225.91
+12:01:23 DATA: num_names: 2, num_ips: 1, host names: s0.2mdn.net., s0-2mdn-net.l.google.com., ips: 74.125.225.27
+12:01:24 DATA: num_names: 1, num_ips: 2, host names: aranet.vo.llnwd.net., ips: 208.111.168.7, 208.111.168.6
+12:01:24 DATA: num_names: 3, num_ips: 2, host names: b.scorecardresearch.com., b.scorecardresearch.com.edgesuite.net., a1294.w20.akamai.net., ips: 192.122.184.81, 192.122.184.83
+12:01:24 DATA: num_names: 3, num_ips: 2, host names: cdn.tacoda.at.atwola.com., cdn.tacoda.at.atwola.com.edgesuite.net., a1742.g.akamai.net., ips: 192.122.184.75, 192.122.184.74
+12:01:24 DATA: num_names: 3, num_ips: 2, host names: d7.zedo.com., d7.zedo.com.edgesuite.net., a124.g.akamai.net., ips: 192.122.184.90, 192.122.184.82
+12:01:24 DATA: num_names: 1, num_ips: 1, host names: pix04.revsci.net., ips: 74.217.1.83
+12:01:24 DATA: num_names: 2, num_ips: 2, host names: www.ugdturner.com., ugdturner.com., ips: 157.166.224.115, 157.166.255.115
+12:01:25 DATA: num_names: 3, num_ips: 1, host names: d14.zedo.com., wac.459B.edgecastcdn.net., gp1.wac.v4cdn.net., ips: 93.184.216.169
+12:01:25 DATA: num_names: 1, num_ips: 1, host names: srv.healthheadlines.com., ips: 50.56.53.252
+12:01:25 DATA: num_names: 3, num_ips: 2, host names: m3.zedo.com., m3.zedo.com.edgesuite.net., a58.g.akamai.net., ips: 192.122.184.89, 192.122.184.81
+12:01:25 DATA: num_names: 4, num_ips: 2, host names: c2462832.r32.cf0.rackcdn.com., a32.rackcdn.com., a32.rackcdn.com.mdc.edgesuite.net., a34.cf.akamai.net., ips: 72.247.219.89, 72.247.219.88
+12:01:25 DATA: num_names: 3, num_ips: 1, host names: connect.facebook.net., connect.facebook.net.edgekey.net., e3821.c.akamaiedge.net., ips: 184.29.223.139
+12:01:25 DATA: num_names: 1, num_ips: 1, host names: www.cnnmexico.com., ips: 205.216.46.8
+12:01:25 DATA: num_names: 3, num_ips: 4, host names: arabic.cnn.com., edition.cnn.com., www.edition.cnn.com., ips: 157.166.255.32, 157.166.226.45, 157.166.226.46, 157.166.255.31
+12:01:25 DATA: num_names: 2, num_ips: 4, host names: edition.cnn.com., www.edition.cnn.com., ips: 157.166.255.32, 157.166.226.45, 157.166.226.46, 157.166.255.31
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: cnnespanol.cnn.com., cnnespanol.wordpress.com., lb.wordpress.com., ips: 76.74.254.120, 76.74.254.123, 72.233.2.58, 72.233.69.6, 74.200.243.251, 74.200.244.59
+12:01:25 DATA: num_names: 2, num_ips: 2, host names: www.hlntv.com., hlntv.com., ips: 157.166.224.238, 157.166.255.238
+12:01:25 DATA: num_names: 2, num_ips: 3, host names: ireport.cnn.com., ireport.com., ips: 157.166.224.6, 157.166.255.213, 157.166.224.4
+12:01:25 DATA: num_names: 2, num_ips: 4, host names: newspulse.cnn.com., svcs.cnn.com., ips: 157.166.226.31, 157.166.226.32, 157.166.224.31, 157.166.224.32
+12:01:25 DATA: num_names: 2, num_ips: 6, host names: sportsillustrated.cnn.com., cnnsi.com., ips: 157.166.224.105, 157.166.226.104, 157.166.226.105, 157.166.255.22, 157.166.255.23, 157.166.224.104
+12:01:25 DATA: num_names: 2, num_ips: 4, host names: money.cnn.com., www.money.com., ips: 157.166.226.109, 157.166.255.24, 157.166.255.25, 157.166.226.108
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: moneyland.time.com., timecheapskate.wordpress.com., vip-lb.wordpress.com., ips: 72.233.104.123, 72.233.127.217, 74.200.247.59, 74.200.247.187, 76.74.255.117, 76.74.255.123
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: news.blogs.cnn.com., cnnnews.wordpress.com., vip-lb.wordpress.com., ips: 76.74.255.123, 72.233.104.123, 72.233.127.217, 74.200.247.59, 74.200.247.187, 76.74.255.117
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: politicalticker.blogs.cnn.com., cnnpoliticalticker.wordpress.com., vip-lb.wordpress.com., ips: 76.74.255.117, 76.74.255.123, 72.233.104.123, 72.233.127.217, 74.200.247.59, 74.200.247.187
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: religion.blogs.cnn.com., cnnreligion.wordpress.com., vip-lb.wordpress.com., ips: 74.200.247.187, 76.74.255.117, 76.74.255.123, 72.233.104.123, 72.233.127.217, 74.200.247.59
+12:01:25 DATA: num_names: 1, num_ips: 4, host names: si.com., ips: 157.166.226.105, 157.166.224.104, 157.166.224.105, 157.166.226.104
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: news.blogs.cnn.com., cnnnews.wordpress.com., vip-lb.wordpress.com., ips: 74.200.247.187, 76.74.255.117, 76.74.255.123, 72.233.104.123, 72.233.127.217, 74.200.247.59
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: marquee.blogs.cnn.com., cnnmarquee.wordpress.com., vip-lb.wordpress.com., ips: 74.200.247.59, 74.200.247.187, 76.74.255.117, 76.74.255.123, 72.233.104.123, 72.233.127.217
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: insidemovies.ew.com., ewinsidemovies.wordpress.com., vip-lb.wordpress.com., ips: 72.233.127.217, 74.200.247.59, 74.200.247.187, 76.74.255.117, 76.74.255.123, 72.233.104.123
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: geekout.blogs.cnn.com., cnngeekout.wordpress.com., lb.wordpress.com., ips: 74.200.244.59, 76.74.254.120, 76.74.254.123, 72.233.2.58, 72.233.69.6, 74.200.243.251
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: eatocracy.cnn.com., cnneatocracy.wordpress.com., vip-lb.wordpress.com., ips: 72.233.104.123, 72.233.127.217, 74.200.247.59, 74.200.247.187, 76.74.255.117, 76.74.255.123
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: thechart.blogs.cnn.com., cnnpagingdrgupta.wordpress.com., vip-lb.wordpress.com., ips: 76.74.255.123, 72.233.104.123, 72.233.127.217, 74.200.247.59, 74.200.247.187, 76.74.255.117
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: joeposnanski.si.com., sijoeposnanski.wordpress.com., vip-lb.wordpress.com., ips: 76.74.255.117, 76.74.255.123, 72.233.104.123, 72.233.127.217, 74.200.247.59, 74.200.247.187
+12:01:25 DATA: num_names: 4, num_ips: 2, host names: www.peoplepets.com., v6-delivery-prod.timeinc.net., v6-www.prod.timeinc.net.edgesuite.net., a1123.g.akamai.net., ips: 192.122.184.96, 192.122.184.90
+12:01:25 DATA: num_names: 4, num_ips: 2, host names: www.people.com., v6-delivery-prod.timeinc.net., v6-www.prod.timeinc.net.edgesuite.net., a1123.g.akamai.net., ips: 192.122.184.96, 192.122.184.90
+12:01:25 DATA: num_names: 2, num_ips: 4, host names: topics.cnn.com., svcs.cnn.com., ips: 157.166.224.32, 157.166.226.31, 157.166.226.32, 157.166.224.31
+12:01:25 DATA: num_names: 3, num_ips: 6, host names: piersmorgan.blogs.cnn.com., cnnpiersmorgan.wordpress.com., vip-lb.wordpress.com., ips: 74.200.247.187, 76.74.255.117, 76.74.255.123, 72.233.104.123, 72.233.127.217, 74.200.247.59
+12:01:25 DATA: num_names: 2, num_ips: 1, host names: www.fannation.com., www.gfannation.aol.com., ips: 64.236.113.121
+12:01:25 DATA: num_names: 2, num_ips: 1, host names: www.turnerstoreonline.com., turnerstoreonline.com., ips: 157.166.173.160
+12:01:25 DATA: num_names: 2, num_ips: 1, host names: www.cnnchile.com., cnnchile.com., ips: 200.83.3.30
+12:01:25 DATA: num_names: 3, num_ips: 2, host names: www.cnnexpansion.com., www.cnnexpansion.com.edgesuite.net., a1556.g.akamai.net., ips: 192.122.184.75, 192.122.184.91
+12:01:26 DATA: num_names: 1, num_ips: 1, host names: cnn.joins.com., ips: 218.145.68.188
+12:01:26 DATA: num_names: 2, num_ips: 2, host names: www.cnn.co.jp., p11269.cdngc.net., ips: 119.31.250.54, 119.31.250.55
+12:01:26 DATA: num_names: 1, num_ips: 4, host names: svcs.cnn.com., ips: 157.166.224.31, 157.166.224.32, 157.166.226.31, 157.166.226.32
+12:01:26 DATA: num_names: 2, num_ips: 2, host names: transcripts.cnn.com., archives.cnn.com., ips: 157.166.255.214, 157.166.226.110
+12:01:26 DATA: num_names: 2, num_ips: 2, host names: www.turner.com., turner.com., ips: 157.166.255.91, 157.166.224.91
+12:01:26 DATA: num_names: 1, num_ips: 1, host names: www.facebook.com., ips: 69.171.228.13
+12:01:26 DATA: num_names: 1, num_ips: 1, host names: ie8.smoothfusion.com., ips: 74.119.26.99
+12:01:26 DATA: num_names: 1, num_ips: 6, host names: www.cnnturk.com., ips: 213.243.32.69, 213.243.32.34, 213.243.32.37, 213.243.32.38, 213.243.32.39, 213.243.32.68
+12:01:28 DATA: num_names: 1, num_ips: 1, host names: cnn.sl.advertising.com., ips: 64.12.152.9
+12:01:28 DATA: num_names: 1, num_ips: 1, host names: cnn.sl.advertising.com., ips: 64.12.152.9
+12:01:28 DATA: num_names: 1, num_ips: 1, host names: yads.zedo.com., ips: 38.102.130.31
+12:01:29 DATA: num_names: 3, num_ips: 1, host names: s-static.ak.facebook.com., s-static.ak.facebook.com.edgekey.net., e566.b.akamaiedge.net., ips: 184.85.34.110
+12:01:29 DATA: num_names: 3, num_ips: 2, host names: fbcdn-profile-a.akamaihd.net., fbcdn-profile-a.akamaihd.net.edgesuite.net., a1505.l.akamai.net., ips: 184.84.255.19, 184.84.255.41
+12:01:29 DATA: num_names: 3, num_ips: 1, host names: s-external.ak.fbcdn.net., s-external.ak.fbcdn.net.edgekey.net., e906.g.akamaiedge.net., ips: 184.29.243.206
+12:01:29 DATA: num_names: 1, num_ips: 3, host names: weather.cnn.com., ips: 157.166.224.117, 157.166.224.118, 157.166.226.117

@@ -1,0 +1,11 @@
+dnsflow-print is a utility that allows a user to listen to dnsflow messages
+and print the out to standard out. It automatically listens to port 5300,
+the standard port dnsflow messages it's clients on.
+
+dnsflow-common is a grouping of common funcitons used throughout the dnsflow-tools suite
+
+compile by typing:
+$make
+
+then execute:
+./dnsflow-print

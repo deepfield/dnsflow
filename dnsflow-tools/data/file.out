@@ -1,0 +1,18 @@
+cc -g -lpcap -Wall -pthread -lldns -lnsl -lresolv -std=c99 dnsflow-print.c -o dnsflow-print 
+dnsflow-print.c:38:58: error: unknown type name ‘strcut’
+dnsflow-print.c: In function ‘main’:
+dnsflow-print.c:61:2: warning: implicit declaration of function ‘bzero’ [-Wimplicit-function-declaration]
+dnsflow-print.c: In function ‘listen_for_dnsflow_pkt’:
+dnsflow-print.c:86:6: warning: variable ‘handle_ret’ set but not used [-Wunused-but-set-variable]
+dnsflow-print.c:85:21: warning: unused variable ‘client’ [-Wunused-variable]
+dnsflow-print.c: In function ‘parse_dns_data_set_pkt’:
+dnsflow-print.c:169:2: warning: format ‘%s’ expects argument of type ‘char *’, but argument 2 has type ‘char **’ [-Wformat]
+dnsflow-print.c: In function ‘print_data_packet’:
+dnsflow-print.c:315:2: warning: implicit declaration of function ‘print_dns_data_set_packet’ [-Wimplicit-function-declaration]
+dnsflow-print.c: At top level:
+dnsflow-print.c:330:6: warning: conflicting types for ‘print_dns_data_set_packet’ [enabled by default]
+dnsflow-print.c:315:2: note: previous implicit declaration of ‘print_dns_data_set_packet’ was here
+dnsflow-print.c: In function ‘print_dns_data_set_packet’:
+dnsflow-print.c:355:3: warning: implicit declaration of function ‘inet_ntoa’ [-Wimplicit-function-declaration]
+dnsflow-print.c:355:6: warning: assignment makes pointer from integer without a cast [enabled by default]
+make: *** [dnsflow-print] Error 1

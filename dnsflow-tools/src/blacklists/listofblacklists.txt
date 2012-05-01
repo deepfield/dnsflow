@@ -1,0 +1,7 @@
+#Domain names
+http://mirror1.malwaredomains.com/files/justdomains
+
+#IP'S
+http://malc0de.com/bl/IP_Blacklist.txt
+https://zeustracker.abuse.ch/blocklist.php?download=ipblocklist
+

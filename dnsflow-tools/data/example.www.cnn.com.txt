@@ -1,0 +1,2895 @@
+Open www.cnn.com in browser:
+
+jkrez@Lance:~/code/jkrez/dnsflow-print$ ./dnsflow-print 
+Creating socket
+Binding to socket
+Total data received: 168
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      2
+flags:           0
+sequence number: 10
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       64
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  www.reddit.com.
+Host name:  reddit.com.edgesuite.net.
+Host name:  a659.b.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.99
+Ip:         192.122.184.88
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       64
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  www.reddit.com.
+Host name:  reddit.com.edgesuite.net.
+Host name:  a659.b.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.88
+Ip:         192.122.184.99
+==================================
+Total data received: 1212
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      16
+flags:           0
+sequence number: 11
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       6
+names_len       16
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    6
+
+ --- host names ---
+Host name:  www.cnn.com.
+
+ --- ips ---
+Ip:         157.166.226.25
+Ip:         157.166.226.26
+Ip:         157.166.255.18
+Ip:         157.166.255.19
+Ip:         157.166.224.25
+Ip:         157.166.224.26
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       16
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  ads.cnn.com.
+
+ --- ips ---
+Ip:         157.166.255.217
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     4
+ips_count       2
+names_len       152
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  4
+num_ips:    2
+
+ --- host names ---
+Host name:  b.scorecardresearch.com.
+Host name:  cn-b.scorecardresearch.com.edgesuite.net.
+Host name:  cn-b.scorecardresearch.com.edgesuite.net.globalredir.akadns.net.
+Host name:  a733.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.99
+Ip:         192.122.184.97
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       6
+names_len       16
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    6
+
+ --- host names ---
+Host name:  www.cnn.com.
+
+ --- ips ---
+Ip:         157.166.224.26
+Ip:         157.166.226.25
+Ip:         157.166.226.26
+Ip:         157.166.255.18
+Ip:         157.166.255.19
+Ip:         157.166.224.25
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       4
+names_len       16
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    4
+
+ --- host names ---
+Host name:  gdyn.cnn.com.
+
+ --- ips ---
+Ip:         157.166.226.167
+Ip:         157.166.226.168
+Ip:         157.166.224.167
+Ip:         157.166.224.168
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     4
+ips_count       2
+names_len       152
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  4
+num_ips:    2
+
+ --- host names ---
+Host name:  b.scorecardresearch.com.
+Host name:  cn-b.scorecardresearch.com.edgesuite.net.
+Host name:  cn-b.scorecardresearch.com.edgesuite.net.globalredir.akadns.net.
+Host name:  a733.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.97
+Ip:         192.122.184.99
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       3
+names_len       48
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    3
+
+ --- host names ---
+Host name:  i2.cdn.turner.com.
+Host name:  cdn.cnn.com.c.footprint.net.
+
+ --- ips ---
+Ip:         204.160.124.126
+Ip:         204.160.125.126
+Ip:         198.78.216.126
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       3
+names_len       48
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    3
+
+ --- host names ---
+Host name:  i.cdn.turner.com.
+Host name:  cdn.cnn.com.c.footprint.net.
+
+ --- ips ---
+Ip:         198.78.216.126
+Ip:         204.160.124.126
+Ip:         204.160.125.126
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  connect.facebook.net.
+Host name:  connect.facebook.net.edgekey.net.
+Host name:  e3821.c.akamaiedge.net.
+
+ --- ips ---
+Ip:         184.85.47.139
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  www.facebook.com.
+
+ --- ips ---
+Ip:         69.171.229.12
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       4
+names_len       16
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    4
+
+ --- host names ---
+Host name:  svcs.cnn.com.
+
+ --- ips ---
+Ip:         157.166.224.31
+Ip:         157.166.224.32
+Ip:         157.166.226.31
+Ip:         157.166.226.32
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       3
+names_len       48
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    3
+
+ --- host names ---
+Host name:  i2.cdn.turner.com.
+Host name:  cdn.cnn.com.c.footprint.net.
+
+ --- ips ---
+Ip:         204.160.125.126
+Ip:         198.78.216.126
+Ip:         204.160.124.126
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       3
+names_len       48
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    3
+
+ --- host names ---
+Host name:  i.cdn.turner.com.
+Host name:  cdn.cnn.com.c.footprint.net.
+
+ --- ips ---
+Ip:         204.160.124.126
+Ip:         204.160.125.126
+Ip:         198.78.216.126
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  connect.facebook.net.
+Host name:  connect.facebook.net.edgekey.net.
+Host name:  e3821.c.akamaiedge.net.
+
+ --- ips ---
+Ip:         184.85.47.139
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       72
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  z.cdn.turner.com.
+Host name:  z.cdn.turner.com.edgesuite.net.
+Host name:  a1755.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.80
+Ip:         192.122.184.91
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       72
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  z.cdn.turner.com.
+Host name:  z.cdn.turner.com.edgesuite.net.
+Host name:  a1755.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.91
+Ip:         192.122.184.80
+==================================
+Total data received: 1248
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      18
+flags:           0
+sequence number: 12
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       44
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  ad.doubleclick.net.
+Host name:  dart.l.doubleclick.net.
+
+ --- ips ---
+Ip:         74.125.225.91
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       24
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  content.pulse360.com.
+
+ --- ips ---
+Ip:         8.9.23.204
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       40
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  s0.2mdn.net.
+Host name:  s0-2mdn-net.l.google.com.
+
+ --- ips ---
+Ip:         74.125.225.91
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       32
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  www.adfusion.com.
+Host name:  adfusion.com.
+
+ --- ips ---
+Ip:         67.192.232.82
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       44
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  ad.doubleclick.net.
+Host name:  dart.l.doubleclick.net.
+
+ --- ips ---
+Ip:         74.125.225.91
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       60
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  d3.zedo.com.
+Host name:  d3.zedo.com.edgesuite.net.
+Host name:  a456.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.82
+Ip:         192.122.184.73
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       60
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  d3.zedo.com.
+Host name:  d3.zedo.com.edgesuite.net.
+Host name:  a456.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.73
+Ip:         192.122.184.82
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       64
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  cnnespanol.cnn.com.
+Host name:  cnnespanol.wordpress.com.
+Host name:  lb.wordpress.com.
+
+ --- ips ---
+Ip:         72.233.2.58
+Ip:         72.233.69.6
+Ip:         74.200.243.251
+Ip:         74.200.244.59
+Ip:         76.74.254.120
+Ip:         76.74.254.123
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       64
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  cnnespanol.cnn.com.
+Host name:  cnnespanol.wordpress.com.
+Host name:  lb.wordpress.com.
+
+ --- ips ---
+Ip:         76.74.254.123
+Ip:         72.233.2.58
+Ip:         72.233.69.6
+Ip:         74.200.243.251
+Ip:         74.200.244.59
+Ip:         76.74.254.120
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       28
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  toes.cnn.com.
+Host name:  ads.cnn.com.
+
+ --- ips ---
+Ip:         157.166.255.217
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       76
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  content.dl-rms.com.
+Host name:  content.dl-rms.com.edgesuite.net.
+Host name:  a1666.x.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.90
+Ip:         192.122.184.81
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       16
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  js.revsci.net.
+
+ --- ips ---
+Ip:         74.217.1.81
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       76
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  content.dl-rms.com.
+Host name:  content.dl-rms.com.edgesuite.net.
+Host name:  a1666.x.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.81
+Ip:         192.122.184.90
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       4
+names_len       56
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    4
+
+ --- host names ---
+Host name:  arabic.cnn.com.
+Host name:  edition.cnn.com.
+Host name:  www.edition.cnn.com.
+
+ --- ips ---
+Ip:         157.166.224.45
+Ip:         157.166.226.46
+Ip:         157.166.255.31
+Ip:         157.166.255.32
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       4
+names_len       40
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    4
+
+ --- host names ---
+Host name:  edition.cnn.com.
+Host name:  www.edition.cnn.com.
+
+ --- ips ---
+Ip:         157.166.224.45
+Ip:         157.166.226.46
+Ip:         157.166.255.31
+Ip:         157.166.255.32
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       96
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  icompass.insightexpressai.com.
+Host name:  icompass.insightexpressai.com.edgesuite.net.
+Host name:  a84.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.99
+Ip:         192.122.184.89
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       4
+names_len       40
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    4
+
+ --- host names ---
+Host name:  edition.cnn.com.
+Host name:  www.edition.cnn.com.
+
+ --- ips ---
+Ip:         157.166.255.32
+Ip:         157.166.224.45
+Ip:         157.166.226.46
+Ip:         157.166.255.31
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       4
+names_len       56
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    4
+
+ --- host names ---
+Host name:  arabic.cnn.com.
+Host name:  edition.cnn.com.
+Host name:  www.edition.cnn.com.
+
+ --- ips ---
+Ip:         157.166.255.31
+Ip:         157.166.255.32
+Ip:         157.166.224.45
+Ip:         157.166.226.46
+==================================
+Total data received: 1232
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      14
+flags:           0
+sequence number: 13
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       96
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  icompass.insightexpressai.com.
+Host name:  icompass.insightexpressai.com.edgesuite.net.
+Host name:  a84.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.89
+Ip:         192.122.184.99
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  finance.fortune.cnn.com.
+Host name:  fortunewallstreet.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  finance.fortune.cnn.com.
+Host name:  fortunewallstreet.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       3
+names_len       32
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    3
+
+ --- host names ---
+Host name:  ireport.cnn.com.
+Host name:  ireport.com.
+
+ --- ips ---
+Ip:         157.166.224.4
+Ip:         157.166.224.6
+Ip:         157.166.255.213
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       3
+names_len       32
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    3
+
+ --- host names ---
+Host name:  ireport.cnn.com.
+Host name:  ireport.com.
+
+ --- ips ---
+Ip:         157.166.255.213
+Ip:         157.166.224.4
+Ip:         157.166.224.6
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  ecocentric.blogs.time.com.
+Host name:  timeecocentric.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  ecocentric.blogs.time.com.
+Host name:  timeecocentric.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       4
+names_len       32
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    4
+
+ --- host names ---
+Host name:  money.cnn.com.
+Host name:  www.money.com.
+
+ --- ips ---
+Ip:         157.166.226.109
+Ip:         157.166.255.24
+Ip:         157.166.255.25
+Ip:         157.166.226.108
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       4
+names_len       32
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    4
+
+ --- host names ---
+Host name:  money.cnn.com.
+Host name:  www.money.com.
+
+ --- ips ---
+Ip:         157.166.226.108
+Ip:         157.166.226.109
+Ip:         157.166.255.24
+Ip:         157.166.255.25
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  globalpublicsquare.blogs.cnn.com.
+Host name:  cnngps.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  globalpublicsquare.blogs.cnn.com.
+Host name:  cnngps.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       4
+names_len       36
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    4
+
+ --- host names ---
+Host name:  newspulse.cnn.com.
+Host name:  svcs.cnn.com.
+
+ --- ips ---
+Ip:         157.166.226.32
+Ip:         157.166.224.31
+Ip:         157.166.224.32
+Ip:         157.166.226.31
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       4
+names_len       36
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    4
+
+ --- host names ---
+Host name:  newspulse.cnn.com.
+Host name:  svcs.cnn.com.
+
+ --- ips ---
+Ip:         157.166.226.31
+Ip:         157.166.226.32
+Ip:         157.166.224.31
+Ip:         157.166.224.32
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       72
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  marquee.blogs.cnn.com.
+Host name:  cnnmarquee.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+==================================
+Total data received: 1248
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      14
+flags:           0
+sequence number: 14
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       72
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  marquee.blogs.cnn.com.
+Host name:  cnnmarquee.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       68
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  news.blogs.cnn.com.
+Host name:  cnnnews.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       68
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  news.blogs.cnn.com.
+Host name:  cnnnews.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       88
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  politicalticker.blogs.cnn.com.
+Host name:  cnnpoliticalticker.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       88
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  politicalticker.blogs.cnn.com.
+Host name:  cnnpoliticalticker.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       4
+names_len       8
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    4
+
+ --- host names ---
+Host name:  si.com.
+
+ --- ips ---
+Ip:         157.166.224.104
+Ip:         157.166.224.105
+Ip:         157.166.226.104
+Ip:         157.166.226.105
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       76
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  religion.blogs.cnn.com.
+Host name:  cnnreligion.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       76
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  religion.blogs.cnn.com.
+Host name:  cnnreligion.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       68
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  altfarm.mediaplex.com.
+Host name:  ad.mediaplex.com.
+Host name:  adfarm.mplx.akadns.net.
+
+ --- ips ---
+Ip:         8.18.45.80
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  www.cnnmexico.com.
+
+ --- ips ---
+Ip:         205.216.46.8
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       68
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  altfarm.mediaplex.com.
+Host name:  ad.mediaplex.com.
+Host name:  adfarm.mplx.akadns.net.
+
+ --- ips ---
+Ip:         8.18.45.80
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       6
+names_len       40
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    6
+
+ --- host names ---
+Host name:  sportsillustrated.cnn.com.
+Host name:  cnnsi.com.
+
+ --- ips ---
+Ip:         157.166.255.22
+Ip:         157.166.255.23
+Ip:         157.166.224.104
+Ip:         157.166.224.105
+Ip:         157.166.226.104
+Ip:         157.166.226.105
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       6
+names_len       40
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    6
+
+ --- host names ---
+Host name:  sportsillustrated.cnn.com.
+Host name:  cnnsi.com.
+
+ --- ips ---
+Ip:         157.166.226.105
+Ip:         157.166.255.22
+Ip:         157.166.255.23
+Ip:         157.166.224.104
+Ip:         157.166.224.105
+Ip:         157.166.226.104
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  whitehouse.blogs.cnn.com.
+Host name:  cnnwhitehouse.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+Ip:         76.74.255.123
+==================================
+Total data received: 1220
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      20
+flags:           0
+sequence number: 15
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       6
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    6
+
+ --- host names ---
+Host name:  whitehouse.blogs.cnn.com.
+Host name:  cnnwhitehouse.wordpress.com.
+Host name:  vip-lb.wordpress.com.
+
+ --- ips ---
+Ip:         76.74.255.123
+Ip:         72.233.104.123
+Ip:         72.233.127.217
+Ip:         74.200.247.59
+Ip:         74.200.247.187
+Ip:         76.74.255.117
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       2
+names_len       40
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    2
+
+ --- host names ---
+Host name:  transcripts.cnn.com.
+Host name:  archives.cnn.com.
+
+ --- ips ---
+Ip:         157.166.255.214
+Ip:         157.166.226.110
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       2
+names_len       40
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    2
+
+ --- host names ---
+Host name:  transcripts.cnn.com.
+Host name:  archives.cnn.com.
+
+ --- ips ---
+Ip:         157.166.226.110
+Ip:         157.166.255.214
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       2
+names_len       36
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    2
+
+ --- host names ---
+Host name:  www.cnn.co.jp.
+Host name:  p11269.cdngc.net.
+
+ --- ips ---
+Ip:         115.69.195.168
+Ip:         115.69.195.136
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       36
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  www.ew.com.
+Host name:  ng.gtimeinc.aol.com.
+
+ --- ips ---
+Ip:         64.236.111.120
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       9
+names_len       44
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    9
+
+ --- host names ---
+Host name:  metrics.turner.com.
+Host name:  turner.com.122.2o7.net.
+
+ --- ips ---
+Ip:         66.235.142.2
+Ip:         66.235.142.3
+Ip:         66.235.142.14
+Ip:         66.235.142.20
+Ip:         66.235.142.24
+Ip:         66.235.142.57
+Ip:         66.235.142.58
+Ip:         66.235.143.118
+Ip:         66.235.143.121
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       2
+names_len       28
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    2
+
+ --- host names ---
+Host name:  secure-us.imrworldwide.com.
+
+ --- ips ---
+Ip:         138.108.6.20
+Ip:         138.108.7.20
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       2
+names_len       36
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    2
+
+ --- host names ---
+Host name:  www.cnn.co.jp.
+Host name:  p11269.cdngc.net.
+
+ --- ips ---
+Ip:         115.69.195.136
+Ip:         115.69.195.168
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       2
+names_len       24
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    2
+
+ --- host names ---
+Host name:  aranet.vo.llnwd.net.
+
+ --- ips ---
+Ip:         208.111.168.6
+Ip:         208.111.168.7
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       9
+names_len       44
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    9
+
+ --- host names ---
+Host name:  metrics.turner.com.
+Host name:  turner.com.122.2o7.net.
+
+ --- ips ---
+Ip:         66.235.143.121
+Ip:         66.235.142.2
+Ip:         66.235.142.3
+Ip:         66.235.142.14
+Ip:         66.235.142.20
+Ip:         66.235.142.24
+Ip:         66.235.142.57
+Ip:         66.235.142.58
+Ip:         66.235.143.118
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       32
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  www.cnnchile.com.
+Host name:  cnnchile.com.
+
+ --- ips ---
+Ip:         200.83.3.30
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       6
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    6
+
+ --- host names ---
+Host name:  www.cnnturk.com.
+
+ --- ips ---
+Ip:         213.243.32.34
+Ip:         213.243.32.37
+Ip:         213.243.32.38
+Ip:         213.243.32.39
+Ip:         213.243.32.68
+Ip:         213.243.32.69
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  www.cnnexpansion.com.
+Host name:  www.cnnexpansion.com.edgesuite.net.
+Host name:  a1556.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.75
+Ip:         192.122.184.91
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       6
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    6
+
+ --- host names ---
+Host name:  www.cnnturk.com.
+
+ --- ips ---
+Ip:         213.243.32.69
+Ip:         213.243.32.34
+Ip:         213.243.32.37
+Ip:         213.243.32.38
+Ip:         213.243.32.39
+Ip:         213.243.32.68
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       80
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  www.cnnexpansion.com.
+Host name:  www.cnnexpansion.com.edgesuite.net.
+Host name:  a1556.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.91
+Ip:         192.122.184.75
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       2
+names_len       28
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    2
+
+ --- host names ---
+Host name:  www.turner.com.
+Host name:  turner.com.
+
+ --- ips ---
+Ip:         157.166.224.91
+Ip:         157.166.255.91
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       52
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  www.turnerstoreonline.com.
+Host name:  turnerstoreonline.com.
+
+ --- ips ---
+Ip:         157.166.173.160
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       1
+names_len       52
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    1
+
+ --- host names ---
+Host name:  www.turnerstoreonline.com.
+Host name:  turnerstoreonline.com.
+
+ --- ips ---
+Ip:         157.166.173.160
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       24
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  ie8.smoothfusion.com.
+
+ --- ips ---
+Ip:         74.119.26.99
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       16
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  cnn.joins.com.
+
+ --- ips ---
+Ip:         218.145.68.188
+==================================
+Total data received: 24
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           1
+sequence number: 16
+==================================
+
+==================================
+======     Dnsflow Stats    ======
+==================================
+pkts_captured     97
+pkts_received     97
+pkts_dropped      0
+pkts_ifdropped    0
+==================================
+Total data received: 712
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      10
+flags:           0
+sequence number: 17
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       60
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  d14.zedo.com.
+Host name:  wac.459B.edgecastcdn.net.
+Host name:  gp1.wac.v4cdn.net.
+
+ --- ips ---
+Ip:         93.184.216.169
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       28
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  srv.healthheadlines.com.
+
+ --- ips ---
+Ip:         50.56.53.252
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       76
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  img-cdn.mediaplex.com.
+Host name:  img.mediaplex.com.edgesuite.net.
+Host name:  a1470.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.96
+Ip:         192.122.184.83
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       60
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  d7.zedo.com.
+Host name:  d7.zedo.com.edgesuite.net.
+Host name:  a124.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.82
+Ip:         192.122.184.99
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       60
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  m3.zedo.com.
+Host name:  m3.zedo.com.edgesuite.net.
+Host name:  a58.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.89
+Ip:         192.122.184.81
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       60
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  d14.zedo.com.
+Host name:  wac.459B.edgecastcdn.net.
+Host name:  gp1.wac.v4cdn.net.
+
+ --- ips ---
+Ip:         93.184.216.169
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       76
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  img-cdn.mediaplex.com.
+Host name:  img.mediaplex.com.edgesuite.net.
+Host name:  a1470.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.83
+Ip:         192.122.184.96
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       60
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  d7.zedo.com.
+Host name:  d7.zedo.com.edgesuite.net.
+Host name:  a124.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.99
+Ip:         192.122.184.82
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       2
+names_len       60
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    2
+
+ --- host names ---
+Host name:  m3.zedo.com.
+Host name:  m3.zedo.com.edgesuite.net.
+Host name:  a58.g.akamai.net.
+
+ --- ips ---
+Ip:         192.122.184.81
+Ip:         192.122.184.89
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  pix04.revsci.net.
+
+ --- ips ---
+Ip:         74.217.1.83
+==================================
+Total data received: 988
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      11
+flags:           0
+sequence number: 18
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  ads.pulse360.com.
+
+ --- ips ---
+Ip:         8.9.23.122
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  click.pulse360.com.
+
+ --- ips ---
+Ip:         8.9.23.202
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       1
+names_len       16
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  yads.zedo.com.
+
+ --- ips ---
+Ip:         38.102.130.31
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     4
+ips_count       2
+names_len       104
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  4
+num_ips:    2
+
+ --- host names ---
+Host name:  c2462832.r32.cf0.rackcdn.com.
+Host name:  a32.rackcdn.com.
+Host name:  a32.rackcdn.com.mdc.edgesuite.net.
+Host name:  a34.cf.akamai.net.
+
+ --- ips ---
+Ip:         72.247.219.89
+Ip:         72.247.219.88
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     4
+ips_count       2
+names_len       104
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  4
+num_ips:    2
+
+ --- host names ---
+Host name:  c2462832.r32.cf0.rackcdn.com.
+Host name:  a32.rackcdn.com.
+Host name:  a32.rackcdn.com.mdc.edgesuite.net.
+Host name:  a34.cf.akamai.net.
+
+ --- ips ---
+Ip:         72.247.219.88
+Ip:         72.247.219.89
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       5
+names_len       96
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    5
+
+ --- host names ---
+Host name:  fbcdn-profile-a.akamaihd.net.
+Host name:  fbcdn-profile-a.akamaihd.net.edgesuite.net.
+Host name:  a1505.l.akamai.net.
+
+ --- ips ---
+Ip:         184.84.255.17
+Ip:         184.84.255.25
+Ip:         184.84.255.50
+Ip:         184.84.255.64
+Ip:         184.84.255.66
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       88
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  s-static.ak.facebook.com.
+Host name:  s-static.ak.facebook.com.edgekey.net.
+Host name:  e566.b.akamaiedge.net.
+
+ --- ips ---
+Ip:         184.85.34.110
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       88
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  s-external.ak.fbcdn.net.
+Host name:  s-external.ak.fbcdn.net.edgekey.net.
+Host name:  e906.g.akamaiedge.net.
+
+ --- ips ---
+Ip:         184.85.35.206
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       5
+names_len       96
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    5
+
+ --- host names ---
+Host name:  fbcdn-profile-a.akamaihd.net.
+Host name:  fbcdn-profile-a.akamaihd.net.edgesuite.net.
+Host name:  a1505.l.akamai.net.
+
+ --- ips ---
+Ip:         184.84.255.66
+Ip:         184.84.255.17
+Ip:         184.84.255.25
+Ip:         184.84.255.50
+Ip:         184.84.255.64
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       88
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  s-static.ak.facebook.com.
+Host name:  s-static.ak.facebook.com.edgekey.net.
+Host name:  e566.b.akamaiedge.net.
+
+ --- ips ---
+Ip:         184.85.34.110
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       1
+names_len       88
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    1
+
+ --- host names ---
+Host name:  s-external.ak.fbcdn.net.
+Host name:  s-external.ak.fbcdn.net.edgekey.net.
+Host name:  e906.g.akamaiedge.net.
+
+ --- ips ---
+Ip:         184.85.35.206
+==================================
+Total data received: 48
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           0
+sequence number: 19
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     1
+ips_count       3
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    3
+
+ --- host names ---
+Host name:  weather.cnn.com.
+
+ --- ips ---
+Ip:         157.166.224.117
+Ip:         157.166.224.118
+Ip:         157.166.226.117
+==================================
+Total data received: 256
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      2
+flags:           0
+sequence number: 20
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       5
+names_len       96
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    5
+
+ --- host names ---
+Host name:  fbcdn-profile-a.akamaihd.net.
+Host name:  fbcdn-profile-a.akamaihd.net.edgesuite.net.
+Host name:  a1505.l.akamai.net.
+
+ --- ips ---
+Ip:         184.84.255.64
+Ip:         184.84.255.66
+Ip:         184.84.255.17
+Ip:         184.84.255.25
+Ip:         184.84.255.50
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     3
+ips_count       5
+names_len       96
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  3
+num_ips:    5
+
+ --- host names ---
+Host name:  fbcdn-profile-a.akamaihd.net.
+Host name:  fbcdn-profile-a.akamaihd.net.edgesuite.net.
+Host name:  a1505.l.akamai.net.
+
+ --- ips ---
+Ip:         184.84.255.50
+Ip:         184.84.255.64
+Ip:         184.84.255.66
+Ip:         184.84.255.17
+Ip:         184.84.255.25
+==================================
+Total data received: 24
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           1
+sequence number: 21
+==================================
+
+==================================
+======     Dnsflow Stats    ======
+==================================
+pkts_captured     112
+pkts_received     112
+pkts_dropped      0
+pkts_ifdropped    0
+==================================
+
+

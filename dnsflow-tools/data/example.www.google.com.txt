@@ -1,0 +1,43 @@
+dig www.google.com
+
+jkrez@Lance:~/code/jkrez/dnsflow-print$ ./dnsflow-print 
+Creating socket
+Binding to socket
+Total data received: 72
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           0
+sequence number: 1
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.71.99
+names_count     2
+ips_count       5
+names_len       36
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    5
+
+ --- host names ---
+Host name:  www.google.com.
+Host name:  www.l.google.com.
+
+ --- ips ---
+Ip:         74.125.225.83
+Ip:         74.125.225.84
+Ip:         74.125.225.80
+Ip:         74.125.225.81
+Ip:         74.125.225.82
+==================================
+

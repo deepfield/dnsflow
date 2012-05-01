@@ -1,0 +1,18 @@
+
+
+Tasks:
+
+1)
+Reading in from std with dnsflow-capture seems to miss the first packet?
+But is fine after that.
+
+./dnsflow-capture-i eth0
+
+2)
+Need to create a bash test script to test simple cases of things I get working
+to make sure I don't break anything when I implment new fetures.
+
+
+3)
+Multi-arch support
+http://wiki.debian.org/Multiarch/Implementation

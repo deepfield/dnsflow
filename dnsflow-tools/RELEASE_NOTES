@@ -1,0 +1,16 @@
+Future Features:
+	Flag for pausing between reading in pcap files
+	FLag for spliting up file data
+
+
+Current supported flags:
+
+usage: ./dnsflow-print [-f pcap_filename] [-h] [-p<number 0:2>] [-P] [-v]
+	[-r <list of files>]: read in dnsflow data from pcap file
+	[-h]: print this help message
+	[-p<number>]: verbosity level
+	[-P]: pretty print
+	[-s]: print stats packet
+	[-v]: version
+
+

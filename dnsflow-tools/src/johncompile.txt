@@ -1,0 +1,5 @@
+To compile on John's personal computer (x64 Ubuntu 11.04):
+
+g++ `pkg-config --cflags --libs glib-2.0` -g  -o dnsflow-common.o dnsflow-common.c -lpcap -c
+g++ `pkg-config --cflags --libs glib-2.0` -g  dnsflow-common.o dnsflow-filter.c -lpcap -o dnsflow-filter
+

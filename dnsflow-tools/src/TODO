@@ -1,0 +1,40 @@
+
+Feature life:
+dnsflow-filter filter by domain level length
+
+
+
+Deployment:
+- have kyle put dnsflow on resolvers sending flow to shannon
+- run fanout on shannon
+- capture loop back on shannon
+- test cat on a day's worth of capture
+- script to generate statistics on dnsflow data using filter 
+	And email stats out to netrd
+
+
+TESTING:
+test cases:
+dnsflow-cat
+- cat out single files with and without -c flag
+- cat out two files and diff with base
+
+dnsflow-fanout:
+- ... does it run?
+
+Needs to be refractored
+dnsflow-cat // got some
+dnsflow-fanout 
+dnsflow-capture  //should implmemnt reading in from dcap files
+dnsflow-print   //test printing out a large file
+dnsflow-filter
+
+
+Python Monitoring of dnsflow feed:
+
+Nightly reports about how what clients requested blacklisted dns sites
+Emailed to merit r+d
+
+
+
+

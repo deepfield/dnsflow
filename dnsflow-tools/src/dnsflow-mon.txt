@@ -1,0 +1,9 @@
+Top 10 most requested (dns / ip)
+Top 10 requesters (dns / ip)
+
+Number of clients (dns / ip)
+Amt of data captured (packtes, GBs)
+
+
+Other things:
+

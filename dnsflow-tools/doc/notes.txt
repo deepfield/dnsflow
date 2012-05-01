@@ -1,0 +1,596 @@
+Reqest from dropbox
+data size 176
+
+0000   00 02 00 00 00 00 00 1c  c0 a8 01 4d 02 06 00 34  ...........M...4
+0010   63 6c 69 65 6e 74 2d 6c  62 2e 64 72 6f 70 62 6f  client-lb.dropbo
+0020   78 2e 63 6f 6d 2e 00 76  2d 63 6c 69 65 6e 74 2e  x.com..v-client.
+0030   73 6a 63 2e 64 72 6f 70  62 6f 78 2e 63 6f 6d 2e  sjc.dropbox.com.
+0040   00 00 00 00 c7 2f d8 ad  c7 2f d8 ae c7 2f d9 ac  ...../.../.../..
+0050   c7 2f d9 ad c7 2f d9 ae  c7 2f d8 ac c0 a8 01 4d  ./.../.../.....M
+0060   02 06 00 34 63 6c 69 65  6e 74 2d 6c 62 2e 64 72  ...4client-lb.dr
+0070   6f 70 62 6f 78 2e 63 6f  6d 2e 00 76 2d 63 6c 69  opbox.com..v-cli
+0080   65 6e 74 2e 73 6a 63 2e  64 72 6f 70 62 6f 78 2e  ent.sjc.dropbox.
+0090   63 6f 6d 2e 00 00 00 00  c7 2f d8 ad c7 2f d8 ae  com....../.../..
+00a0   c7 2f d9 ac c7 2f d9 ad  c7 2f d9 ae c7 2f d8 ac ./.../.../.../..
+
+struct dnsflow_hdr {
+	uint8_t		version = 0
+	uint8_t		sets_count = 2
+	uint16_t	flags = 0
+	uint32_t	sequence_number = 0x1c
+};
+
+struct dnsflow_set_hdr {
+	in_addr_t		client_ip = c0 a8 01 4d
+	uint8_t			names_count = 2
+	uint8_t			ips_count = 6
+	uint16_t		names_len = 0x34 = 52
+};
+
+struct dns_data_set {
+	char 			*names[DNSFLOW_MAX_PARSE] = client-lb.dropbox.com. NULL v-client.sjc.dropbox.com. NULL NULL NULL NULL  } Len : 52
+	int			name_lens[DNSFLOW_MAX_PARSE] = not sent
+	int			num_names = not sent
+	in_addr_t		ips[DNSFLOW_MAX_PARSE] = [ 6 ips ]
+	int			num_ips = not sent
+};
+
+struct dnsflow_set_hdr {
+	in_addr_t		client_ip = c0 a8 01 4d
+	uint8_t			names_count = 2
+	uint8_t			ips_count = 6
+	uint16_t		names_len = 0x34 = 52
+};
+
+struct dns_data_set {
+	char 			*names[DNSFLOW_MAX_PARSE] = client-lb.dropbox.com. NULL v-client.sjc.dropbox.com. NULL NULL NULL NULL   } len : 52
+	int			name_lens[DNSFLOW_MAX_PARSE] = not sent
+	int			num_names = not sent
+	in_addr_t		ips[DNSFLOW_MAX_PARSE] = [ 6 ips ]
+	int			num_ips = not sent
+};
+================================================================================
+(google talk program request)
+talkx.l.google.com
+
+Dnsflow data size 64
+
+struct dnsflow_hdr {
+	uint8_t		version = 0
+	uint8_t		sets_count = 1
+	uint16_t	flags = 0 
+	uint32_t	sequence_number = 0x344
+};
+
+struct dnsflow_set_hdr {
+	in_addr_t		client_ip = c0 98 01 4d
+	uint8_t			names_count = 2
+	uint8_t			ips_count = 1
+	uint16_t		names_len = 28
+};
+
+struct dns_data_set {
+	char 			*names[DNSFLOW_MAX_PARSE] = talkx.l.google.com NULL alt1.talk.l.google.com. NULL
+	int			name_lens[DNSFLOW_MAX_PARSE] = not sent
+	int			num_names = not sent
+	in_addr_t		ips[DNSFLOW_MAX_PARSE] = [1 ip]
+	int			num_ips = not sent
+};
+================================================================================
+dig www.google.com
+
+Dnsflow Data packet size: 72
+
+struct dnsflow_hdr {
+	uint8_t		version = 0 
+	uint8_t		sets_count = 1
+	uint16_t	flags = 0
+	uint32_t	sequence_number = 0x241
+};
+
+struct dnsflow_set_hdr {
+	in_addr_t		client_ip = 0x8d d4 b5 ed
+	uint8_t			names_count = 2
+	uint8_t			ips_count = 5 
+	uint16_t		names_len = 36
+};
+
+struct dns_data_set {
+	char 			*names[DNSFLOW_MAX_PARSE] = www.google.com. NULL wwww.l.google.com. NULL NULL NULL 
+	int			name_lens[DNSFLOW_MAX_PARSE] = not sent	
+	int			num_names = not sent
+	in_addr_t		ips[DNSFLOW_MAX_PARSE] = [5 ips]
+	int			num_ips = not sent
+};
+================================================================================
+dig google.com
+
+Dnsflow data packet size = 48 bytes
+
+struct dnsflow_hdr {
+	uint8_t		version = 0
+	uint8_t		sets_count = 1
+	uint16_t	flags = 0 
+	uint32_t	sequence_number = 40
+};
+
+struct dnsflow_set_hdr {
+	in_addr_t		client_ip = 8d d4 b5 ed
+	uint8_t			names_count = 1
+	uint8_t			ips_count = 5
+	uint16_t		names_len = 12
+};
+
+struct dns_data_set {
+	char 			*names[DNSFLOW_MAX_PARSE] = www.google.com. NULL
+	int			name_lens[DNSFLOW_MAX_PARSE] = not sent
+	int			num_names = not sent
+	in_addr_t		ips[DNSFLOW_MAX_PARSE] = [5 ips]
+	int			num_ips = not sent
+};
+================================================================================
+
+
+TEMPLATE
+
+struct dnsflow_hdr {
+	uint8_t		version =
+	uint8_t		sets_count =
+	uint16_t	flags =
+	uint32_t	sequence_number =
+};
+
+struct dnsflow_set_hdr {
+	in_addr_t		client_ip =
+	uint8_t			names_count =
+	uint8_t			ips_count =
+	uint16_t		names_len = 
+};
+
+struct dns_data_set {
+	char 			*names[DNSFLOW_MAX_PARSE] =
+	int			name_lens[DNSFLOW_MAX_PARSE] =
+	int			num_names =
+	in_addr_t		ips[DNSFLOW_MAX_PARSE] =
+	int			num_ips =
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+0000   00 03 00 00 00 00 03 64 c0 a8 01 4d 02 05 00 24  .......d...M...$
+0010   77 77 77 2e 67 6f 6f 67 6c 65 2e 63 6f 6d 2e 00  www.google.com..
+0020   77 77 77 2e 6c 2e 67 6f 6f 67 6c 65 2e 63 6f 6d  www.l.google.com
+0030   2e 00 00 00 4a 7d e1 30 4a 7d e1 34 4a 7d e1 32  ....J}.0J}.4J}.2
+0040   4a 7d e1 31 4a 7d e1 33 c0 a8 01 4d 02 10 00 2c  J}.1J}.3...M...,
+0050   63 6c 69 65 6e 74 73 31 2e 67 6f 6f 67 6c 65 2e  clients1.google.
+0060   63 6f 6d 2e 00 63 6c 69 65 6e 74 73 2e 6c 2e 67  com..clients.l.g
+0070   6f 6f 67 6c 65 2e 63 6f 6d 2e 00 00 4a 7d e1 2d  oogle.com...J}.-
+0080   4a 7d e1 27 4a 7d e1 28 4a 7d e1 2c 4a 7d e1 22  J}.'J}.(J}.,J}."
+0090   4a 7d e1 21 4a 7d e1 23 4a 7d e1 20 4a 7d e1 26  J}.!J}.#J}. J}.&
+00a0   4a 7d e1 25 4a 7d e1 2e 4a 7d e1 24 4a 7d e1 29  J}.%J}..J}.$J}.)
+00b0   4a 7d e1 2b 4a 7d e1 2f 4a 7d e1 2a c0 a8 01 4d  J}.+J}./J}.*...M
+00c0   02 10 00 2c 63 6c 69 65 6e 74 73 31 2e 67 6f 6f  ...,clients1.goo
+00d0   67 6c 65 2e 63 6f 6d 2e 00 63 6c 69 65 6e 74 73  gle.com..clients
+00e0   2e 6c 2e 67 6f 6f 67 6c 65 2e 63 6f 6d 2e 00 00  .l.google.com...
+00f0   4a 7d e1 2d 4a 7d e1 27 4a 7d e1 28 4a 7d e1 2c  J}.-J}.'J}.(J}.,
+0100   4a 7d e1 22 4a 7d e1 21 4a 7d e1 23 4a 7d e1 20  J}."J}.!J}.#J}. 
+0110   4a 7d e1 26 4a 7d e1 25 4a 7d e1 2e 4a 7d e1 24  J}.&J}.%J}..J}.$
+0120   4a 7d e1 29 4a 7d e1 2b 4a 7d e1 2f 4a 7d e1 2a  J}.)J}.+J}./J}.*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+0000   00 02 00 00 00 00 01 98 8d d4 b5 ed 02 02 00 34
+
+0010   66 70 2d 6c 69 6d 65 6c 69 67 68 74 2e 6d 75 73
+
+0020   69 63 6e 65 74 2e 63 6f 6d 2e 00 6d 65 64 69 61
+
+0030   6e 65 74 2e 76 6f 2e 6c 6c 6e 77 64 2e 6e 65 74
+
+0040   2e 00 00 00 d0 6f a8 06 d0 6f a8 07 8d d4 b5 ed
+
+0050   02 02 00 34 66 70 2d 6c 69 6d 65 6c 69 67 68 74
+
+0060   2e 6d 75 73 69 63 6e 65 74 2e 63 6f 6d 2e 00 6d
+
+0070   65 64 69 61 6e 65 74 2e 76 6f 2e 6c 6c 6e 77 64
+
+0080   2e 6e 65 74 2e 00 00 00 d0 6f a8 07 d0 6f a8 06
+
+
+0000   00 02 00 00 00 00 01 98 8d d4 b5 ed 02 02 00 34  ...............4
+0010   66 70 2d 6c 69 6d 65 6c 69 67 68 74 2e 6d 75 73  fp-limelight.mus
+0020   69 63 6e 65 74 2e 63 6f 6d 2e 00 6d 65 64 69 61  icnet.com..media
+0030   6e 65 74 2e 76 6f 2e 6c 6c 6e 77 64 2e 6e 65 74  net.vo.llnwd.net
+0040   2e 00 00 00 d0 6f a8 06 d0 6f a8 07 8d d4 b5 ed  .....o...o......
+0050   02 02 00 34 66 70 2d 6c 69 6d 65 6c 69 67 68 74  ...4fp-limelight
+0060   2e 6d 75 73 69 63 6e 65 74 2e 63 6f 6d 2e 00 6d  .musicnet.com..m
+0070   65 64 69 61 6e 65 74 2e 76 6f 2e 6c 6c 6e 77 64  edianet.vo.llnwd
+0080   2e 6e 65 74 2e 00 00 00 d0 6f a8 07 d0 6f a8 06  .net.....o...o..
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      2
+flags:           0
+sequence number: 408
+==================================
+
+header size 8
+data size (udp data - dnsflow header) 136
+data ptr at offset 8
+dnsflow data packet
+
+parse_set_hdr
+data set header parse: 4
+data set header parse: 5
+data set header parse: 6
+END data set header parse: 8
+set dns_set_hdr size 8
+new offest for data_set 8
+
+data packet size parsed: 52
+parsed: fp-limelight.musicnet.com.
+header names cnt: 52
+data packet num names 2
+offset for parsing ips 52data packet size parsed: 60
+Ip test!!:         208.111.168.6
+data packet num ips 2
+END data packet size parsed: 64
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.181.237
+names_count     2
+ips_count       2
+names_len       52
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    2
+
+ --- host names ---
+Host name:  fp-limelight.musicnet.com.
+Host name:  fp-limelight.musicnet.com.
+
+ --- ips ---
+Ip:         208.111.168.6
+Ip:         208.111.168.7
+==================================
+handle requests
+Total data received: 24
+in get_header
+header end offset 8
+
+================================================================================
+
+0000   00 01 00 00 00 00 01 c1 8d d4 b5 ed 01 05 00 0c
+
+0010   67 6f 6f 67 6c 65 2e 63 6f 6d 2e 00 4a 7d e1 52
+
+0020   4a 7d e1 53 4a 7d e1 54 4a 7d e1 50 4a 7d e1 51
+
+0000   00 01 00 00 00 00 01 c1 8d d4 b5 ed 01 05 00 0c  ................
+0010   67 6f 6f 67 6c 65 2e 63 6f 6d 2e 00 4a 7d e1 52  google.com..J}.R
+0020   4a 7d e1 53 4a 7d e1 54 4a 7d e1 50 4a 7d e1 51  J}.SJ}.TJ}.PJ}.Q
+
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           0
+sequence number: 449
+==================================
+
+header size 8
+data size (udp data - dnsflow header) 40
+data ptr at offset 8
+dnsflow data packet
+
+parse_set_hdr
+data set header parse: 4
+data set header parse: 5
+data set header parse: 6
+END data set header parse: 8
+set dns_set_hdr size 8
+new offest for data_set 8
+
+data packet size parsed: 12
+parsed: google.com.
+header names cnt: 12
+data packet num names 1
+offset for parsing ips 12data packet size parsed: 32
+Ip test!!:         74.125.225.82
+data packet num ips 5
+END data packet size parsed: 36
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.181.237
+names_count     1
+ips_count       5
+names_len       12
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    5
+
+ --- host names ---
+Host name:  google.com.
+
+ --- ips ---
+Ip:         74.125.225.82
+Ip:         74.125.225.83
+Ip:         74.125.225.84
+Ip:         74.125.225.80
+Ip:         74.125.225.81
+==================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+================================================================================
+
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           0
+sequence number: 443
+==================================
+
+header size 8
+data size (udp data - dnsflow header) 64
+data ptr at offset 8
+dnsflow data packet
+
+parse_set_hdr
+data set header parse: 4
+data set header parse: 5
+data set header parse: 6
+END data set header parse: 8
+set dns_set_hdr size 8
+new offest for data_set 8
+
+data packet size parsed: 36
+parsed: www.google.com.
+header names cnt: 36
+data packet num names 2
+offset for parsing ips 36data packet size parsed: 56
+Ip test!!:         74.125.225.82
+data packet num ips 5
+END data packet size parsed: 60
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.181.237
+names_count     2
+ips_count       5
+names_len       36
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    5
+
+ --- host names ---
+Host name:  www.google.com.
+Host name:  www.google.com.
+
+ --- ips ---
+Ip:         74.125.225.82
+Ip:         74.125.225.83
+Ip:         74.125.225.84
+Ip:         74.125.225.80
+Ip:         74.125.225.81
+==================================
+handle requests
+Total data received: 24
+in get_header
+header end offset 8
+
+
+================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+0000   00 01 00 00 00 00 0b fd 8d d4 5e ed 01 10 00 14
+
+0010   64 6f 63 73 2e 67 6f 6f 67 6c 65 2e 63 6f 6d 2e
+
+0020   00 00 00 00 4a 7d e1 45 4a 7d e1 46 4a 7d e1 47
+
+0030   4a 7d e1 48 4a 7d e1 49 4a 7d e1 4a 4a 7d e1 4b
+0040   4a 7d e1 4c 4a 7d e1 4d 4a 7d e1 4e 4a 7d e1 4f
+0050   4a 7d e1 40 4a 7d e1 41 4a 7d e1 42 4a 7d e1 43
+0060   4a 7d e1 44
+
+
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           1
+sequence number: 217
+==================================
+
+==================================
+======     Dnsflow Stats    ======
+==================================
+pkts_captured     83
+pkts_received     83
+pkts_dropped      0
+pkts_ifdropped    0
+==================================
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      16
+flags:           0
+sequence number: 218
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.217.185
+names_count     2
+ips_count       16
+names_len       36
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  2
+num_ips:    16
+
+ --- host names ---
+Host name:  code.google.com.
+Host name:  code.google.com.
+
+ --- ips ---
+Ip:         74.125.225.74
+Ip:         74.125.225.75
+Ip:         74.125.225.76
+Ip:         74.125.225.77
+Ip:         74.125.225.78
+Ip:         74.125.225.79
+Ip:         74.125.225.64
+Ip:         74.125.225.65
+Ip:         74.125.225.66
+Ip:         74.125.225.67
+Ip:         74.125.225.68
+Ip:         74.125.225.69
+Ip:         74.125.225.70
+Ip:         74.125.225.71
+Ip:         74.125.225.72
+Ip:         74.125.225.73
+==================================
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           0
+sequence number: 219
+==================================
+
+==================================
+====     Dnsflow Set Header   ====
+==================================
+client_ip       141.212.217.185
+names_count     1
+ips_count       1
+names_len       20
+==================================
+
+==================================
+===    Dnsflow dns data set    ===
+==================================
+num_names:  1
+num_ips:    1
+
+ --- host names ---
+Host name:  csi.gstatic.com.
+
+ --- ips ---
+Ip:         209.85.148.120
+==================================
+
+==================================
+======    Dnsflow header    ======
+==================================
+version:         0
+sets_count:      1
+flags:           1
+sequence number: 220
+==================================
+
+==================================
+======     Dnsflow Stats    ======
+==================================
+pkts_captured     100
+pkts_received     100
+pkts_dropped      0
+pkts_ifdropped    0
+==================================
+
+$code.google.com.code.l.google.com.J}JJ}KJ}LJ}MJ}NJ}OJ}@J}AJ}BJ}CJ}DJ}EJ}FJ}GJ}HJ}I$code.google.com.code.l.google.com.J}IJ}JJ}KJ}LJ}MJ}NJ}OJ}@J}AJ}BJ}CJ}DJ}EJ}FJ}GJ}H$apis.google.com.www3.l.google.com.J}DJ}EJ}FJ}GJ}HJ}IJ}JJ}KJ}LJ}MJ}NJ}OJ}@J}AJ}BJ}C$apis.google.com.www3.l.google.com.J}CJ}DJ}EJ}FJ}GJ}HJ}IJ}JJ}KJ}LJ}MJ}NJ}OJ}@J}AJ}Bajaxian.com.+$maps.google.com.maps.l.google.com.J}FJ}GJ}HJ}IJ}JJ}KJ}LJ}MJ}NJ}OJ}@J}AJ}BJ}CJ}DJ}E$maps.google.com.maps.l.google.com.J}EJ}FJ}GJ}HJ}IJ}JJ}KJ}LJ}MJ}NJ}OJ}@J}AJ}BJ}CJ}D8www.browserscope.org.ghs.google.com.ghs.l.google.com.Uy8www.browserscope.org.ghs.google.com.ghs.l.google.com.Uywww.die.net.www.w3.org.4%www.gstatic.com.Uxspriteme.org.ED(plusone.google.com.plus.l.google.com.J}IJ}JJ}KJ}LJ}MJ}NJ}OJ}@J}AJ}BJ}CJ}DJ}EJ}FJ}GJ}H(plusone.google.com.plus.l.google.com.J}HJ}IJ}JJ}KJ}LJ}MJ}NJ}OJ}@J}AJ}BJ}CJ}DJ}EJ}FJ}Gapache.org.
+
+
