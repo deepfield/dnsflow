@@ -1,3 +1,7 @@
+/* kroell change - added nsmg flag to globalargs 
+/*               - added call to nmsg output function if arg set
+*/
+
 #include <getopt.h>
 #include <sys/stat.h>
 #include <err.h>
@@ -48,6 +52,8 @@ struct GlobalArgs_t {
 	unsigned int file_counter;
 	unsigned int bytes_to_file;
 	unsigned int bytes_written_total;
+	unsigned int nmsg;
+	char * nmsg_filename;
 	struct tm32 time;
 } arguments_g;
 //-------------------------
@@ -61,7 +67,7 @@ int main(int argc, char *argv[])
 	int c, port = DNSFLOW_PORT;
 
 	program_name = argv[0];
-	char opt_string[] = "d:i:p:w:v:";
+	char opt_string[] = "d:i:p:n:w:v:";
 	char * interface = 0;
 	char buf[DNSFLOW_MAX_FILENAME + DNSFLOW_MAX_DIRNAME + 1];
 
@@ -74,6 +80,8 @@ int main(int argc, char *argv[])
 	arguments_g.bytes_written_total = 0;
 	arguments_g.file_counter = 0;
 	arguments_g.file = 0;
+	arguments_g.nmsg = 0;
+	arguments_g.nmsg_filename = 0;
 	strcpy(arguments_g.cap_filename, DNSFLOW_CAP_FILENAME);
 
 
@@ -107,6 +115,11 @@ int main(int argc, char *argv[])
 			case 'w':
 				arguments_g.filename = optarg;
 				break;
+		        case 'n': 
+		                //write to nmsg format
+		                arguments_g.nmsg = 1;
+		                arguments_g.nmsg_filename = optarg;
+		                break;
 			case 'h': //intentional fall through
 			case '?':
 			default:
@@ -127,6 +140,21 @@ int main(int argc, char *argv[])
 		printf("No output file or directory, writing to std out!\n");
 		//usage();
 	}
+	
+	//check for nmsg 
+	if (arguments_g.nmsg) 
+	{
+	        if (arguments_g.nmsg_filename)
+	        {
+	                init_nmsg(arguments_g.nmsg_filename);
+	        }
+	        else 
+	        { 
+	                fprintf(stderr, "No nmsg filename specified for write");
+	                return 1;
+	        }
+	}
+	
 	//check for conflicting options
 	if(arguments_g.filename && arguments_g.directory)
 	{
@@ -152,6 +180,12 @@ int main(int argc, char *argv[])
 	int socketfd = get_dnsflow_socketfd(port, interface, arguments_g.verbosity);
 	listen_for_dnsflow_pkt(socketfd, parse_dnsflow_packets);
 
+        //close nmsg 
+        if (arguments_g.nmsg) 
+        {
+                cleanup_nmsg();
+        }
+        
 	//close file  XXX NEEDS TESTING
 	if(arguments_g.filename && !arguments_g.directory)
 		fclose(arguments_g.file);
@@ -171,10 +205,18 @@ int parse_dnsflow_packets(char * data, unsigned int total_size)
 		//printf("writing to dir\n");
 		ret = write_dnsflow_pkt_to_directory(data, total_size);
 	}
-	else if(arguments_g.filename)
+	else if(arguments_g.filename || arguments_g.nmsg_filename)
 	{
-		//printf("writing to file %s\n", arguments_g.filename);
-		ret = write_dnsflow_pkt_to_dcap_file(data, total_size, arguments_g.filename);
+		printf("writing to file %s\n", arguments_g.filename);
+		//check if writing to nmsg file or regular file
+		if (arguments_g.nmsg) 
+		{
+		        printf("writing in nmsg format\n");
+		        ret = write_dnsflow_pkt_to_nmsg_file(data, total_size); 
+		}
+		
+		if (arguments_g.filename)
+		        ret = write_dnsflow_pkt_to_dcap_file(data, total_size, arguments_g.filename);
 	}
 	else
 	{
@@ -441,12 +483,13 @@ int read_from_stdin(void)
 
 void usage(void)
 {
-	fprintf(stderr, "\nUsage: %s [-i interface] [-p port][-h]"
-		   " [-v<number [0:1]>] [-w outfilename]\n", program_name);
+	fprintf(stderr, "\nUsage: %s [-i interface] [-p port] [-h]"
+		   " [-v<number [0:1]>] [-n outfilename] [-w outfilename]\n", program_name);
 	fprintf(stderr, "default's to reading in from stdin and writing to stdout\n");
 	fprintf(stderr, "\t[-d]: directory to write rolling pcap files to\n");
 	fprintf(stderr, "\t[-i]: interface to read packets\n");
 	fprintf(stderr, "\t[-h]: print this help message\n");
+	fprintf(stderr, "\t[-n]: write to file in nmsg format\n");
 	fprintf(stderr, "\t[-p]: listen port number\n");
 	fprintf(stderr, "\t[-w]: write to file in dcap format\n");
 	fprintf(stderr, "\t[-v]: version\n\n");

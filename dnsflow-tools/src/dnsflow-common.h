@@ -77,6 +77,12 @@ int32_t write_dcap_set_to_file(struct dcap_header * dc_hdr, char * data, unsigne
 int32_t write_dnsflow_set_to_file(struct dnsflow_hdr * hdr, char * data, unsigned int data_size, FILE * file);
 void host_to_net_dnsflow_hdr(struct dnsflow_hdr * hdr);
 
+//nmsg format
+int32_t write_nmsg_dcap_data(char * data, struct dnsflow_hdr * hdr, uint32_t size);
+int32_t write_dnsflow_pkt_to_nmsg_file(char * data, uint32_t total_size); 
+int init_nmsg(char * filename);
+int cleanup_nmsg();
+
 //packet parsing
 int32_t parse_packet_type(char * data, uint32_t len);
 

@@ -83,6 +83,8 @@ static struct GlobalArgs_t
 	int32_t dcap;
 	char * dcap_file;
 	int32_t write_file_timestamp;
+	int32_t nmsg;
+	char * nmsg_filename;
 } arguments_g;
 
 static struct tm32 * timeparts_g;
@@ -446,9 +448,10 @@ void process_globals(void)
 
 void usage(void)
 {
-	fprintf(stderr, "\nUsage: %s [-h] [-p<number 0:2>] [-P] [-r pcap_filename]"
+	fprintf(stderr, "\nUsage: %s [-h] [-n nmsg_filename] [-p<number 0:2>] [-P] [-r pcap_filename]"
 			" [-R dcap_filenam] [-v]\n", program_name);
 	fprintf(stderr, "\t[-h]: print this help message\n");
+	fprintf(stderr, "\t[-n]: print to nmsg file\n");
 	fprintf(stderr, "\t[-p<number>]: verbosity level\n");
 	fprintf(stderr, "\t[-P]: pretty print\n");
 	fprintf(stderr, "\t[-r <list of files>]: read in dnsflow data from pcap"
@@ -519,8 +522,13 @@ int32_t print_dcap_file(char * filename)
 	
 	while((data = get_next_dnsflow_packet(&header)))
 	{
+	        //if nmsg -- write to nsmg file
+	        if (arguments_g.nmsg)
+	                write_dnsflow_pkt_to_nmsg_file(data, header.data_len);
+	
 		//write print to std out
-		print_dcap_packet(data, &header);
+		else 
+		        print_dcap_packet(data, &header);
 
 		byte_counter += header.data_len + sizeof(struct dcap_header);
 	}
@@ -537,7 +545,7 @@ int main(int argc, char *argv[])
 	ARGC = argc;
 
 	program_name = argv[0];
-	char opt_string[] = "hp:PrR:sv?";
+	char opt_string[] = "hn:p:PrR:sv?";
 
 	//initalize global arguments
 	arguments_g.verbosity = 0;
@@ -547,6 +555,8 @@ int main(int argc, char *argv[])
 	arguments_g.dcap = 0;
 	arguments_g.dcap_file = 0;
 	arguments_g.write_file_timestamp = 0;
+	arguments_g.nmsg = 0;
+	arguments_g.nmsg_filename = 0;
 
 	DBG("dnsflow header len %u\n", (unsigned int)sizeof(struct dnsflow_hdr));
 	DBG("dcap header len %u\n", (unsigned int)sizeof(struct dcap_header));
@@ -556,6 +566,10 @@ int main(int argc, char *argv[])
 	//Get options
 	while ((c = getopt(argc, argv, opt_string)) != -1) {
 		switch (c) {
+		        case 'n': //print to nmsg file
+		                arguments_g.nmsg = 1;
+		                arguments_g.nmsg_filename = optarg;
+		                break;
 			case 'p': //verbosity level	
 				verb_lvl = atoi(optarg);
 				arguments_g.verbosity = verb_lvl;
@@ -602,6 +616,18 @@ int main(int argc, char *argv[])
 	argv += optind;
 
 	process_globals();
+	
+	if (arguments_g.nmsg) 
+	{
+	        if (!arguments_g.nmsg_filename) 
+	        {
+	                fprintf(stderr, "No file specifed for nmsg output");
+	                return 1;
+	        }
+	        
+	        init_nmsg(arguments_g.nmsg_filename);
+	}
+	
 	if(arguments_g.files)
 	{
 		DBG("%s\n", "checking for pcap files");

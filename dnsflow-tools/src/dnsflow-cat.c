@@ -19,6 +19,8 @@
 #include "dnsflow-common.h"
 #include "dnsflow-cat.h"
 
+#include  "nmsg.h"
+
 //#define DO_DEBUG
 
 #ifdef DO_DEBUG
@@ -36,21 +38,23 @@ static struct GlobalArgs_t {
 	int filename;
 	int combine;
 	char * combine_name;
+	char * nmsg_file;
 } arguments_g;
 
 static char * program_name;
 
 int main(int argc, char * argv[])
-{
+{     
 	program_name = argv[0];
 
 	//initalize vars
 	arguments_g.verbosity = 0;
 	arguments_g.filename = 0;
 	arguments_g.combine = 0;
+	arguments_g.nmsg_file = 0;
 
 	//options string
-	char * opt_string = "hcv";
+	char * opt_string = "hcn:v";
 	char c;
 	
 	DBG("size of dcap %u\n", sizeof(struct dcap_header));
@@ -61,6 +65,9 @@ int main(int argc, char * argv[])
 			case 'c': //combine files
 				arguments_g.combine = 1;
 				break;
+			case 'n': //write to nmsg file
+			        arguments_g.nmsg_file = optarg;
+			        break;
 			case 'v': //verbosity
 				//printf("setting verbosity to 1\n");
 				arguments_g.verbosity = 1;
@@ -86,6 +93,10 @@ int main(int argc, char * argv[])
 	{
 		combine_files(argc, argv);
 		return 0;
+	}
+	
+	if(arguments_g.nmsg_file) {
+	        init_nmsg(arguments_g.nmsg_file);
 	}
 
 	cat_out_multiple_files(argc, argv);
@@ -285,11 +296,17 @@ int cat_out_file(char * filename)
 	//get data while there's some in the file
 	while((data = get_next_dnsflow_packet(&dcap_hdr)))
 	{
-		write_dcap_data(stdout, data, &dcap_hdr);
+	        //write to nmsg file if specified
+		if (arguments_g.nmsg_file) 
+		        write_dnsflow_pkt_to_nmsg_file(data, dcap_hdr.data_len);
+		else
+		        write_dcap_data(stdout, data, &dcap_hdr);
+		
 		counter += dcap_hdr.data_len + sizeof(struct dcap_header);
 	}
 
 	//close file
+        cleanup_nmsg();
 	return (int) close_dcap_file();
 }
 
@@ -343,9 +360,10 @@ int process_data_packet(struct dcap_header * dcap_hdr, struct dnsflow_hdr * dnsf
 
 void usage()
 {
-	fprintf(stderr, "\nUsage: %s [-h] [-c] [-v] <filename>", program_name);
+	fprintf(stderr, "\nUsage: %s [-h] [-c] [-n filename] [-v] <filename>", program_name);
 	fprintf(stderr, "\t[-h]: this help message\n");
 	fprintf(stderr, "\t[-c]: combine 1 or more dcap files\n");
+	fprintf(stderr, "\t[-n]: print to nmsg file\n");
 	fprintf(stderr, "\t[-v]: use verbosity level\n");
 	exit(1);
 }

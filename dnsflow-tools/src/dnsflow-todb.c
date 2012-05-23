@@ -29,7 +29,8 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 
-#include <postgresql/libpq-fe.h>
+//#include <postgresql/libpq-fe.h>
+#include <libpq-fe.h>
 
 #include "dnsflow-common.h"
 #include "dnsflow-print.h"

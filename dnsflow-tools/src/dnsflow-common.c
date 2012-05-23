@@ -7,6 +7,9 @@
  *  information
  *
  */
+ 
+ /* kroell changes - added write_dnsflow_pkt_to_nmsg_file
+ */
 
 #include <err.h>
 #include <errno.h>
@@ -35,6 +38,18 @@
 #include <sys/types.h>
 #include "dnsflow-common.h"
 
+//for nmsg output
+#include "nmsg.h"
+#include <nmsg/isc/defs.h>
+#include <assert.h>
+#define nmsf(a,b,c,d,e) do { \
+	nmsg_res _res; \
+	_res = nmsg_message_set_field(a,b,c,(uint8_t *) d,e); \
+	assert(_res == nmsg_res_success); \
+} while (0)
+
+
+
 #define MAX_FILENAME_LEN 255
 #define DCAP_HEADER_SIZE 25
 #define BUFSIZE 2048
@@ -50,6 +65,7 @@
 #define PCAP_STDIN_FILENAME "-"
 #define WHITESPACE_DELIMS " \n\t\v\f\r"
 #define DNSFLOW_FILE_EXT "dcap"
+
 
 //#define DO_DEBUG
 
@@ -248,19 +264,24 @@ int32_t read_dcap_filestream_cb(FILE * handle, int (*callback)(char *, struct dc
 	
 	//read header
 	read_dcap_header(&header, handle);
+//	DBG("dnsflow header len %u\n", (unsigned int)sizeof(struct dnsflow_hdr));
+//	DBG("dcap header len %u\n", (unsigned int)sizeof(struct dcap_header));
+//	DBG("first dcap header len %u\n", header.data_len);
 
-	DBG("dnsflow header len %u\n", (unsigned int)sizeof(struct dnsflow_hdr));
-	DBG("dcap header len %u\n", (unsigned int)sizeof(struct dcap_header));
-	DBG("first dcap header len %u\n", header.data_len);
+	printf("dnsflow header len %u\n", (unsigned int)sizeof(struct dnsflow_hdr));
+	printf("dcap header len %u\n", (unsigned int)sizeof(struct dcap_header));
+	printf("first dcap header len %u\n", header.data_len);
 
 	//read file while datalen
 	while(header.data_len)
 	{
 		//add to counter
 		byte_counter += sizeof(struct dcap_header);
+        printf("byte_counter = %d\n",byte_counter);
 
 		//get data packet
 		data = get_next_dnsflow_packet_from_file(&header, handle);
+        printf("got data");
 
 		//call callback function
 		callback(data, &header);
@@ -306,6 +327,7 @@ inline void swap_ptrs(void ** a, void ** b)
 char * get_next_dnsflow_packet_from_file(struct dcap_header * header, FILE * file)
 {
 	//get data
+    printf("i'm in get_next_dnsflow_packet_from_file!");
 	size_t amt2 = fread(data_g, 1, header->data_len, file);
 	if(amt2 == 0)
 	{
@@ -517,6 +539,7 @@ int32_t write_dcap_pkt_to_dcap_file(char * data, struct dcap_header * header, ch
 	return 0;
 }
 
+
 //write raw stream to file
 //file format: (uint32_t size) (data)
 int32_t write_dnsflow_pkt_to_dcap_file(char * data, uint32_t total_size, char * filename)
@@ -562,6 +585,104 @@ int32_t write_dcap_data(FILE * file, char * data, struct dcap_header * header)
 	return 0;
 }
 
+//nmsg globals
+static nmsg_message_t msg_g;
+static nmsg_msgmod_t mod_g;
+static nmsg_output_t output_g;
+static nmsg_res res_g;
+static void *clos_g;
+
+//write raw stream to nmsg format
+int32_t write_dnsflow_pkt_to_nmsg_file(char * data, uint32_t total_size) 
+{       
+        //get the dnsflow header
+        struct dnsflow_hdr hdr; 
+        int offset = get_header(&hdr, data);
+
+        //move past dnsflow header
+        data += offset;
+        
+        //call write function
+        write_nmsg_dcap_data(data, &hdr, total_size);
+	
+	return 0;
+}
+
+//Write preformated data to nmsg formatted file
+int32_t write_nmsg_dcap_data(char * data, struct dnsflow_hdr * hdr, uint32_t size)
+{       
+	int version = hdr->version;
+	int sets_count = hdr->sets_count;
+	int flags = hdr->flags;
+	int seq_num = hdr->sequence_number;
+	
+        //fprintf(stderr, "%d, %d, %d, %d\n", version, sets_count, flags, seq_num);
+
+        //set dcap mod fields with data
+        nmsf(msg_g, "version", 0, &version, sizeof(version));
+        nmsf(msg_g, "sets_count", 0, &sets_count, sizeof(sets_count));
+        nmsf(msg_g, "flags", 0, &flags, sizeof(flags));
+        nmsf(msg_g, "sequence_number", 0, &seq_num, sizeof(seq_num));
+        nmsf(msg_g, "data", 0, data, size);
+     	
+     	//write output to file
+     	nmsg_output_write(output_g, msg_g);
+     	
+	return 0;       
+}
+
+//init the nmsg lib set up file for writing
+int init_nmsg(char * filename) {
+
+        /* initialize libnmsg */
+	res_g = nmsg_init();
+	if (res_g != nmsg_res_success)
+		err(1, "Unable to initialize libnmsg\n");
+
+        /*open file for appending*/
+        FILE * file;
+        file = fopen(filename, "a+");
+        int fd = fileno(file);
+        if (!file) 
+        {
+                err(1, "Unable to open file: %s", filename);
+        }
+
+
+	/* create nmsg output */
+	output_g = nmsg_output_open_file(fd, 5000);
+	if (output_g == NULL)
+		err(1, "Unable to nmsg_output_open_file()");
+
+	/* open handle to the dcap module */
+	mod_g = nmsg_msgmod_lookup(NMSG_VENDOR_ISC_ID, NMSG_VENDOR_ISC_DCAP_ID);
+	if (mod_g == NULL)
+		err(1, "Unable to acquire module handle");
+
+	/* initialize module */
+	res_g = nmsg_msgmod_init(mod_g, &clos_g);
+	if (res_g != nmsg_res_success)
+		exit(res_g);
+		
+        msg_g = nmsg_message_init(mod_g);
+	assert(msg_g != NULL);
+
+        return 0;
+}
+
+//clean up nmsg and close output file
+int cleanup_nmsg() {
+
+        nmsg_message_destroy(&msg_g);
+        
+        /* finalize module */
+	nmsg_msgmod_fini(mod_g, &clos_g);
+
+	/* close nmsg output */
+	nmsg_output_close(&output_g);
+        
+        return 0;
+}
 
 int get_dnsflow_socketfd(int port, char * interface, int32_t verbosity)
 {
@@ -601,7 +722,7 @@ int get_dnsflow_socketfd(int port, char * interface, int32_t verbosity)
 	length = sizeof(server);
 	bzero((char *) &server, length);
 	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_addr.s_addr = inet_addr("198.108.63.60");
 	server.sin_port = htons(port);
 	DBG("binding to port %u\n", port);
 
@@ -609,6 +730,9 @@ int get_dnsflow_socketfd(int port, char * interface, int32_t verbosity)
 	if(verbosity)
 		printf("Binding to socket\n");
 	if(bind(socketfd, (struct sockaddr *) &server, length) < 0)
+//bind(3, {sa_family=AF_INET, sin_port=htons(5300), sin_addr=inet_addr("0.0.0.0")}, 16) = 0
+
+        
 	{
 		err(1, "error on binding");
 		exit(1);
@@ -753,6 +877,8 @@ uint32_t get_header(struct dnsflow_hdr *header, char * data)
 
 	header->sequence_number = ntohl(*((uint32_t*)(data + offset)));
 	offset += sizeof(uint32_t);
+
+        DBG("%s\n", "packet dnsflow header complete");
 
 	return offset;
 }
