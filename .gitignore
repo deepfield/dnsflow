@@ -1,0 +1,12 @@
+*.swp
+*.o
+*.a
+*.lo
+*.la
+*.pyc
+*.dSYM
+.DS_Store
+.deps
+tags
+
+dnsflow
