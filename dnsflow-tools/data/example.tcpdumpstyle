@@ -1,14 +1,14 @@
 jkrez@Lance:~/code/jkrez/dnsflow-print$ ./dnsflow-print 
 Run with -v to enable verbose output
-16:14:38 DATA 64 bytes from 141.212.185.27, 1 data sets
+16:14:38 DATA 64 bytes from <sanitized>, 1 data sets
 16:14:41 STATS 506 captured, 506 received, 0 dropped, 0 ifdropped
-16:14:43 DATA 72 bytes from 141.212.185.27, 2 data sets
-16:14:44 DATA 744 bytes from 141.212.185.27, 12 data sets
-16:14:44 DATA 1208 bytes from 141.212.185.27, 15 data sets
-16:14:45 DATA 1220 bytes from 141.212.185.27, 18 data sets
-16:14:45 DATA 1200 bytes from 141.212.185.27, 14 data sets
-16:14:45 DATA 1300 bytes from 141.212.185.27, 16 data sets
-16:14:46 DATA 1232 bytes from 141.212.185.27, 13 data sets
-16:14:47 DATA 304 bytes from 141.212.185.27, 3 data sets
+16:14:43 DATA 72 bytes from <sanitized>, 2 data sets
+16:14:44 DATA 744 bytes from <sanitized>, 12 data sets
+16:14:44 DATA 1208 bytes from <sanitized>, 15 data sets
+16:14:45 DATA 1220 bytes from <sanitized>, 18 data sets
+16:14:45 DATA 1200 bytes from <sanitized>, 14 data sets
+16:14:45 DATA 1300 bytes from <sanitized>, 16 data sets
+16:14:46 DATA 1232 bytes from <sanitized>, 13 data sets
+16:14:47 DATA 304 bytes from <sanitized>, 3 data sets
 16:14:51 STATS 600 captured, 600 received, 0 dropped, 0 ifdropped
 

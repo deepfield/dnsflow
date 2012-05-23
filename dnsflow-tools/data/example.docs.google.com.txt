@@ -17,7 +17,7 @@ sequence number: 4
 ==================================
 ====     Dnsflow Set Header   ====
 ==================================
-client_ip       141.212.71.99
+client_ip       <sanitized>
 names_count     1
 ips_count       16
 names_len       20
