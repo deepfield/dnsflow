@@ -1,13 +1,10 @@
-This is DNSFlow
+This is DNSFlow version 1.0
+Lightweight DNS telemetry
 
 Dependencies:
 
 ldns
 http://nlnetlabs.nl/projects/ldns/
-to run only:
-sudo yum install ldns.i686
-to build:
-sudo yum install ldns-devel.i686
 
 libevent
 http://monkey.org/~provos/libevent/
