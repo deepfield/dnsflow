@@ -51,11 +51,14 @@
 #include <netinet/tcp.h>
 #include <pcap/pcap.h>
 
-// Linux is different (and need ifdef)?
 #include <net/ethernet.h>
 #include <event.h>
 
 #include "dcap.h"
+
+#ifndef ETHERTYPE_VLAN
+#define	ETHERTYPE_VLAN		0x8100		/* IEEE 802.1Q VLAN tagging */
+#endif
 
 static void 
 dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
