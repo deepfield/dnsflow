@@ -3,9 +3,9 @@ Lightweight DNS telemetry
 
 Ubuntu/Debian install:
 ```
-sudo apt-get install build-essential libpcap-dev libevent-dev libldns-dev
-cd dnsflow
-make
+   sudo apt-get install build-essential libpcap-dev libevent-dev libldns-dev
+   cd dnsflow
+   make
 ```
 
 Dependencies:
