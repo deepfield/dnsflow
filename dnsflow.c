@@ -154,6 +154,19 @@ struct dnsflow_buf {
 		struct dnsflow_stats_pkt	stats_pkt;
 	} DB_dat;
 };
+
+/* pcap record headers for saved files */
+struct pcap_timeval {
+    bpf_int32 tv_sec;		/* seconds */
+    bpf_int32 tv_usec;		/* microseconds */
+};
+
+struct pcap_sf_pkthdr {
+    struct pcap_timeval ts;	/* time stamp */
+    bpf_u_int32 caplen;		/* length of portion present */
+    bpf_u_int32 len;		/* length this packet (off wire) */
+};
+
 #define db_data_pkt	DB_dat.data_pkt
 #define db_stats_pkt	DB_dat.stats_pkt
 
@@ -177,6 +190,11 @@ static uint32_t			pkts_captured = 0;
 static char *default_filter =
 	"(udp and src port 53 and udp[10:2] & 0x8187 = 0x8180) or "
 	"(vlan and (udp and src port 53 and udp[10:2] & 0x8187 = 0x8180))";
+
+static char *default_pcap_record_filter = "udp and dst port %s";
+
+/* pcap-record dest port (*network* byte order) */
+static uint16_t pcap_record_dst_port = 0;
 
 static int 			udp_num_dsts = 0;
 static struct sockaddr_in	dst_so_addrs[DNSFLOW_UDP_MAX_DSTS];
@@ -305,7 +323,6 @@ dnsflow_dns_extract(ldns_pkt *lp)
 
 	ldns_rr_type			rr_type;
 	ldns_rr				*q_rr, *a_rr;
-	ldns_rdf_type			rdf_type;
 	ldns_rdf			*rdf;
 
 	int				i, j;
@@ -348,7 +365,6 @@ dnsflow_dns_extract(ldns_pkt *lp)
 		/* When do you have more than one rd per rr? */
 		for (j = 0; j < ldns_rr_rd_count(a_rr); j++) {
 			rdf = ldns_rr_rdf(a_rr, j);
-			rdf_type = ldns_rdf_get_type(rdf);
 
 			if (rr_type == LDNS_RR_TYPE_CNAME) {
 				if (data->num_names == DNSFLOW_MAX_PARSE) {
@@ -543,6 +559,24 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 		return;
 	}
 
+	/* DNS response wrapped in pcap record, in udp packet */
+	if (udphdr->uh_dport == pcap_record_dst_port) {
+		ip_pkt = (char *)udphdr + sizeof(struct udphdr)
+				+ sizeof(struct pcap_sf_pkthdr)
+				+ sizeof(struct ether_header);
+		if ((ip = ip4_check(pkt_len, ip_pkt)) == NULL) {
+			printf("ip4_check failed\n");
+			/* Bad pkt */
+			return;
+		}
+
+		if ((udphdr = udp4_check(pkt_len, ip)) == NULL) {
+			printf("udp4_check failed\n");
+			/* Bad pkt */
+			return;
+		}
+	}
+
 	udp_data = (uint8_t *)udphdr + sizeof(struct udphdr);
 	lp = dnsflow_dns_check(ntohs(udphdr->uh_ulen), udp_data);
 	if (lp == NULL) {
@@ -637,7 +671,7 @@ usage(void)
 	extern char *__progname;
 
 	fprintf(stderr, "Usage: %s [-hp] [-i interface] [-r pcap_file] "
-			"[-f filter_expression]\n",
+			"[-X pcap_record_recv_port] [-f filter_expression]\n",
 		__progname);
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
 	fprintf(stderr, "\n  Default filter: %s\n", default_filter);
@@ -651,10 +685,13 @@ main(int argc, char *argv[])
 	int			c, rv, promisc = 1;
 	char			*pcap_file_read = NULL, *pcap_file_write = NULL;
 	char			*filter = NULL, *intf_name = NULL;
+	static char		pcap_record_filter[256];
 	struct dcap		*dcap = NULL;
 	struct sockaddr_in	*so_addr = NULL;
+	unsigned long port;
+	char *endptr;
 
-	while ((c = getopt(argc, argv, "i:r:f:pu:w:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:r:f:pu:w:X:h")) != -1) {
 		switch (c) {
 		case 'i':
 			intf_name = optarg;
@@ -679,6 +716,24 @@ main(int argc, char *argv[])
 			if (inet_pton(AF_INET, optarg,
 					&so_addr->sin_addr) != 1) {
 				errx(1, "invalid ip: %s", optarg);
+			}
+			break;
+		case 'X':
+			port = strtoul(optarg, &endptr, 0);
+			if ((optarg[0] == '\0') || (endptr[0] != '\0')
+			    || (port >= 2<<15)) {
+				fprintf(stderr, "Invalid udp port: %s\n",
+					optarg);
+				exit(1);
+			}
+			pcap_record_dst_port = htons(port);
+
+			if (filter == NULL) {
+				snprintf(pcap_record_filter,
+					 sizeof(pcap_record_filter),
+					 default_pcap_record_filter,
+					 optarg);
+                        	filter = pcap_record_filter;
 			}
 			break;
 		case 'w':
