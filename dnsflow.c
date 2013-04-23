@@ -256,7 +256,10 @@ write_pid_file(char *pid_file)
 		return 0;
 	}
 
-	ftruncate(fd, 0);
+	if (ftruncate(fd, 0) < 0) {
+		perror(pid_file);
+		return 0;
+	}
 	fp = fdopen(fd, "w");
 
 	fprintf(fp, "%u\n", getpid());
