@@ -168,6 +168,15 @@ struct pcap_sf_pkthdr {
     bpf_u_int32 len;		/* length this packet (off wire) */
 };
 
+/* From http://www.juniper.net/techpubs/en_US/junos/topics/concept/subscriber-management-subscriber-secure-policy-radius-header.html 
+ * Note: looks like juniper has another slightly different mirror format:
+ * https://www.juniper.net/techpubs/en_US/junos/topics/concept/subscriber-management-subscriber-secure-policy-dtcp-header.html. Not sure when that would be 
+ * used. */
+struct jmirror_hdr {
+	uint32_t	intercept_id;
+	uint32_t	session_id;
+};
+
 #define db_data_pkt	DB_dat.data_pkt
 #define db_stats_pkt	DB_dat.stats_pkt
 
@@ -192,10 +201,14 @@ static char *default_filter =
 	"(udp and src port 53 and udp[10:2] & 0x8187 = 0x8180) or "
 	"(vlan and (udp and src port 53 and udp[10:2] & 0x8187 = 0x8180))";
 
-static char *default_pcap_record_filter = "udp and dst port %s";
+static char *default_pcap_record_filter_fmt = "udp and dst port %d";
+static char *default_jmirror_filter_fmt = "udp and dst port %d";
 
 /* pcap-record dest port (*network* byte order) */
 static uint16_t pcap_record_dst_port = 0;
+
+/* jmirror dest port (*network* byte order) - typically 30030 */
+static uint16_t jmirror_dst_port = 0;
 
 static int 			udp_num_dsts = 0;
 static struct sockaddr_in	dst_so_addrs[DNSFLOW_UDP_MAX_DSTS];
@@ -300,14 +313,65 @@ udp4_check(int pkt_len, struct ip *ip)
 	return (udphdr);
 }
 
+/* Sanity/buffer-len checks.
+ * Returns pointer to udp data, or NULL on error.
+ * On success, ip_ret and udphdr_ret will point to the headers. */
+static char *
+ip_udp_check(int pkt_len, char *ip_pkt,
+		struct ip **ip_ret, struct udphdr **udphdr_ret)
+{
+	char			*udp_data = NULL;
+	struct ip		*ip = NULL;
+	struct udphdr		*udphdr = NULL;
+
+	*ip_ret = NULL;
+	*udphdr_ret = NULL;
+
+	/* XXX Count/log number of bad pkts. */
+	/* XXX Need to pull in ip/udp checksumming and fragment handling. */
+
+	if ((ip = ip4_check(pkt_len, ip_pkt)) == NULL) {
+		return NULL;
+	}
+
+	if ((udphdr = udp4_check(pkt_len, ip)) == NULL) {
+		return NULL;
+	}
+	udp_data = (char *)udphdr + sizeof(struct udphdr);
+
+	*ip_ret = ip;
+	*udphdr_ret = udphdr;
+	return (udp_data);
+}
+
+/* Handle encapsulated ip pkts.
+ * encap_hdr should point to the start of encapsulated pkt.
+ * ip_encap_offset is the number of bytes to reach the ip header.
+ * Returns pointer to udp data, or NULL on error.
+ * On success, ip_ret and udphdr_ret will point to the headers. */
+static char *
+ip_encap_check(int pkt_len, char *encap_hdr, int ip_encap_offset,
+		struct ip **ip_ret, struct udphdr **udphdr_ret)
+{
+	*ip_ret = NULL;
+	*udphdr_ret = NULL;
+
+	if (pkt_len < ip_encap_offset) {
+		return (NULL);
+	}
+
+	return (ip_udp_check(pkt_len - ip_encap_offset,
+			encap_hdr + ip_encap_offset, ip_ret, udphdr_ret));
+}
+
 static ldns_pkt *
-dnsflow_dns_check(int pkt_len, uint8_t *dns_pkt)
+dnsflow_dns_check(int pkt_len, char *dns_pkt)
 {
 	ldns_status		status;
 	ldns_pkt		*lp;
 	ldns_rr			*q_rr;
 
-	status = ldns_wire2pkt(&lp, dns_pkt, pkt_len);
+	status = ldns_wire2pkt(&lp, (uint8_t *)dns_pkt, pkt_len);
 	if (status != LDNS_STATUS_OK) {
 		printf("Bad DNS pkt: %s\n", ldns_get_errorstr_by_id(status));
 		return (NULL);
@@ -570,50 +634,42 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 	}
 }
 
-
 static void
 dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 {
 	struct ip		*ip;
 	struct udphdr		*udphdr;
-	uint8_t			*udp_data;
+	char			*udp_data;
+	int			ip_encap_offset = 0;
+	int			remaining = pkt_len;
 
 	ldns_pkt		*lp;
 	struct dns_data_set	*dns_data;
 
 	pkts_captured++;
 
-	if ((ip = ip4_check(pkt_len, ip_pkt)) == NULL) {
-		/* Bad pkt */
+	if ((udp_data = ip_udp_check(pkt_len, ip_pkt, &ip, &udphdr)) == NULL) {
 		return;
 	}
+	remaining -= udp_data - ip_pkt;
 
-	/* XXX Need to pull in ip/udp checksumming and fragment handling. */
-
-	if ((udphdr = udp4_check(pkt_len, ip)) == NULL) {
-		/* Bad pkt */
-		return;
-	}
-
-	/* DNS response wrapped in pcap record, in udp packet */
+	/* Handle various encapsulations. */
 	if (udphdr->uh_dport == pcap_record_dst_port) {
-		ip_pkt = (char *)udphdr + sizeof(struct udphdr)
-				+ sizeof(struct pcap_sf_pkthdr)
-				+ sizeof(struct ether_header);
-		if ((ip = ip4_check(pkt_len, ip_pkt)) == NULL) {
-			printf("ip4_check failed\n");
-			/* Bad pkt */
-			return;
-		}
-
-		if ((udphdr = udp4_check(pkt_len, ip)) == NULL) {
-			printf("udp4_check failed\n");
-			/* Bad pkt */
+		/* pcap header, eth, ip, udp, dns */
+		ip_encap_offset = sizeof(struct pcap_sf_pkthdr)
+			+ sizeof(struct ether_header);
+	} else if (udphdr->uh_dport == jmirror_dst_port) {
+		/* jmirror, ip, udp, dns */
+		ip_encap_offset = sizeof(struct jmirror_hdr);
+	}
+	if (ip_encap_offset != 0) {
+		udp_data = ip_encap_check(remaining, udp_data, ip_encap_offset,
+				&ip, &udphdr); 
+		if (udp_data == NULL) {
 			return;
 		}
 	}
 
-	udp_data = (uint8_t *)udphdr + sizeof(struct udphdr);
 	lp = dnsflow_dns_check(ntohs(udphdr->uh_ulen), udp_data);
 	if (lp == NULL) {
 		/* Bad dns pkt, or one we're not interested in. */
@@ -707,8 +763,9 @@ usage(void)
 	extern char *__progname;
 
 	fprintf(stderr, "Usage: %s [-hp] [-i interface] [-r pcap_file] "
-			"[-P pidfile] [-X pcap_record_recv_port] "
-			"[-f filter_expression]\n",
+			"[-P pidfile] [-f filter_expression]\n"
+			"\t[-X pcap_record_recv_port] "
+			"[-J jmirror_port (usually 30030)]\n",
 			__progname);
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
 	fprintf(stderr, "\n  Default filter: %s\n", default_filter);
@@ -722,16 +779,24 @@ main(int argc, char *argv[])
 	int			c, rv, promisc = 1;
 	char			*pcap_file_read = NULL, *pcap_file_write = NULL;
 	char			*filter = NULL, *intf_name = NULL;
-	static char		pcap_record_filter[256];
+	static char		pcap_record_filter[256], jmirror_filter[256];
 	struct dcap		*dcap = NULL;
 	struct sockaddr_in	*so_addr = NULL;
-	unsigned long port;
-	char *endptr;
 
-	while ((c = getopt(argc, argv, "i:r:f:pP:u:w:X:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:pP:u:w:X:h")) != -1) {
 		switch (c) {
 		case 'i':
 			intf_name = optarg;
+			break;
+		case 'J':
+			jmirror_dst_port = htons(atoi(optarg));
+			if (filter == NULL) {
+				snprintf(jmirror_filter,
+					 sizeof(jmirror_filter),
+					 default_jmirror_filter_fmt,
+					 ntohs(jmirror_dst_port));
+                        	filter = jmirror_filter;
+			}
 			break;
 		case 'f':
 			filter = optarg;
@@ -761,20 +826,12 @@ main(int argc, char *argv[])
 			}
 			break;
 		case 'X':
-			port = strtoul(optarg, &endptr, 0);
-			if ((optarg[0] == '\0') || (endptr[0] != '\0')
-			    || (port >= 2<<15)) {
-				fprintf(stderr, "Invalid udp port: %s\n",
-					optarg);
-				exit(1);
-			}
-			pcap_record_dst_port = htons(port);
-
+			pcap_record_dst_port = htons(atoi(optarg));
 			if (filter == NULL) {
 				snprintf(pcap_record_filter,
 					 sizeof(pcap_record_filter),
-					 default_pcap_record_filter,
-					 optarg);
+					 default_pcap_record_filter_fmt,
+					 ntohs(pcap_record_dst_port));
                         	filter = pcap_record_filter;
 			}
 			break;
@@ -797,6 +854,7 @@ main(int argc, char *argv[])
 	if (filter == NULL) {
 		filter = default_filter;
 	}
+	printf("Using filter: %s\n", filter);
 
 
 	// Init libevent 
