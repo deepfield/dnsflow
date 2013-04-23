@@ -53,6 +53,7 @@
       pkts_dropped	[4 bytes]
       pkts_ifdropped	[4 bytes] Only supported on some platforms.
  */
+#include <sys/file.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -216,6 +217,41 @@ ts_format(struct timeval *ts)
                sec / 3600, (sec % 3600) / 60, sec % 60, usec);
 
         return buf;
+}
+
+/**
+ * Write and lock pid file.
+ *
+ * return 1 on success, 0 on failure.
+ */
+static int
+write_pid_file(char *pid_file)
+{
+	int	fd;
+	FILE	*fp;	
+
+	fd = open(pid_file, O_CREAT | O_RDWR, 0666);
+	if (fd == -1) {
+		perror(pid_file);
+		return 0;
+	}
+
+	if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
+		if (errno != EWOULDBLOCK) {
+			perror(pid_file);
+		}
+		return 0;
+	}
+
+	ftruncate(fd, 0);
+	fp = fdopen(fd, "w");
+
+	fprintf(fp, "%u\n", getpid());
+
+	fflush(fp);
+	fsync(fileno(fp));
+
+	return 1;
 }
 
 
@@ -671,8 +707,9 @@ usage(void)
 	extern char *__progname;
 
 	fprintf(stderr, "Usage: %s [-hp] [-i interface] [-r pcap_file] "
-			"[-X pcap_record_recv_port] [-f filter_expression]\n",
-		__progname);
+			"[-P pidfile] [-X pcap_record_recv_port] "
+			"[-f filter_expression]\n",
+			__progname);
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
 	fprintf(stderr, "\n  Default filter: %s\n", default_filter);
 
@@ -691,7 +728,7 @@ main(int argc, char *argv[])
 	unsigned long port;
 	char *endptr;
 
-	while ((c = getopt(argc, argv, "i:r:f:pu:w:X:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:r:f:pP:u:w:X:h")) != -1) {
 		switch (c) {
 		case 'i':
 			intf_name = optarg;
@@ -701,6 +738,11 @@ main(int argc, char *argv[])
 			break;
 		case 'p':
 			promisc = 0;
+			break;
+		case 'P':
+			if (!write_pid_file(optarg)) {
+				errx(1, "dnsflow already running");
+			}
 			break;
 		case 'r':
 			pcap_file_read = optarg;
@@ -756,7 +798,6 @@ main(int argc, char *argv[])
 		filter = default_filter;
 	}
 
-	//liblog_init("dnsflow");
 
 	// Init libevent 
 	event_init();
