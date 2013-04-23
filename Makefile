@@ -5,7 +5,7 @@ CC = gcc -g -L/usr/lib -Wall -O3 -D_BSD_SOURCE
 LIBS_DEFAULT = -lldns -lpcap -levent
 
 ifeq ($(OS), Linux)
-	LIBS_LINUX += -lrt -lcrypto 
+	LIBS_LINUX += -lrt 
 	#LIBS = -Wl,-Bstatic $(LIBS_DEFAULT) $(LIBS_LINUX) -Wl,-Bdynamic
 	LIBS = $(LIBS_DEFAULT) $(LIBS_LINUX)
 else
