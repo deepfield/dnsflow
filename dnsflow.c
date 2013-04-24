@@ -201,8 +201,7 @@ static char *default_filter =
 	"(udp and src port 53 and udp[10:2] & 0x8187 = 0x8180) or "
 	"(vlan and (udp and src port 53 and udp[10:2] & 0x8187 = 0x8180))";
 
-static char *default_pcap_record_filter_fmt = "udp and dst port %d";
-static char *default_jmirror_filter_fmt = "udp and dst port %d";
+static char *default_encap_filter_fmt = "udp and dst port %d and udp[%d:2] = 0x0035 and udp[%d:2] & 0x8187 = 0x8180";
 
 /* pcap-record dest port (*network* byte order) */
 static uint16_t pcap_record_dst_port = 0;
@@ -785,6 +784,7 @@ main(int argc, char *argv[])
 	static char		pcap_record_filter[256], jmirror_filter[256];
 	struct dcap		*dcap = NULL;
 	struct sockaddr_in	*so_addr = NULL;
+	int			next_udp_offset = 0;
 
 	while ((c = getopt(argc, argv, "i:J:r:f:pP:u:w:X:h")) != -1) {
 		switch (c) {
@@ -794,10 +794,15 @@ main(int argc, char *argv[])
 		case 'J':
 			jmirror_dst_port = htons(atoi(optarg));
 			if (filter == NULL) {
+				/* udp, jmirror, ip, udp, dns */
+				next_udp_offset = sizeof(struct udphdr) +
+					sizeof(struct jmirror_hdr) +
+					sizeof(struct ip);
 				snprintf(jmirror_filter,
 					 sizeof(jmirror_filter),
-					 default_jmirror_filter_fmt,
-					 ntohs(jmirror_dst_port));
+					 default_encap_filter_fmt,
+					 ntohs(jmirror_dst_port),
+					 next_udp_offset, next_udp_offset + 10);
                         	filter = jmirror_filter;
 			}
 			break;
@@ -831,10 +836,16 @@ main(int argc, char *argv[])
 		case 'X':
 			pcap_record_dst_port = htons(atoi(optarg));
 			if (filter == NULL) {
+				/* udp, pcap header, eth, ip, udp, dns */
+				next_udp_offset = sizeof(struct udphdr) +
+					sizeof(struct pcap_sf_pkthdr) +
+					sizeof(struct ether_header) +
+					sizeof(struct ip);
 				snprintf(pcap_record_filter,
 					 sizeof(pcap_record_filter),
-					 default_pcap_record_filter_fmt,
-					 ntohs(pcap_record_dst_port));
+					 default_encap_filter_fmt,
+					 ntohs(pcap_record_dst_port),
+					 next_udp_offset, next_udp_offset + 10);
                         	filter = pcap_record_filter;
 			}
 			break;
