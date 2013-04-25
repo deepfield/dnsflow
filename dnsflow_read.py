@@ -78,8 +78,8 @@ def process_pkt(dl_type, ts, buf):
         return (pkt, err)
     cp += struct.calcsize(fmt)
 
-    # Only Version 0, so far
-    if vers != 0 or sets_count == 0:
+    # Version 0 or 1
+    if (vers != 0 and vers != 1) or sets_count == 0:
         err = 'BAD_PKT|%s' % (src_ip)
         return (pkt, err)
    
@@ -122,8 +122,6 @@ def process_pkt(dl_type, ts, buf):
             cp += struct.calcsize(fmt)
             client_ip = str(ipaddr.IPAddress(client_ip))
 
-            # names are Nul terminated, and padded with Nuls on the end to word
-            # align.
             fmt = '%ds' % (names_len)
 
             try:
@@ -133,8 +131,35 @@ def process_pkt(dl_type, ts, buf):
                 err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                 return (pkt, err)
             cp += struct.calcsize(fmt)
-            names = name_set.split('\0')
-            names = names[0:names_count]
+            if vers == 1:
+                # Each name is in the form of an uncompressed dns name.
+                # names are root domain (Nul) terminated, and padded with Nuls
+                # on the end to word align. 
+                names = []
+                np = 0
+                try:
+                    for x in range(names_count):
+                        name = []
+                        label_len = ord(name_set[np])
+                        np += 1
+                        while label_len != 0:
+                            name.append(name_set[np: np + label_len])
+                            np += label_len
+                            label_len = ord(name_set[np])
+                            np += 1
+                        name = '.'.join(name)
+                        names.append(name)
+                except IndexError as e:
+                    # Hit the end of the name_set buffer.
+                    err = 'NAMES_PARSE_ERROR|%s|%d|%s' % (repr(name_set),
+                            names_count, e)
+                    return (pkt, err)
+            else:
+                # vers = 0
+                # names are Nul terminated, and padded with Nuls on the end to
+                # word align.
+                names = name_set.split('\0')
+                names = names[0:names_count]
 
             fmt = '!%dI' % (ips_count)
             try:

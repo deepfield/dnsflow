@@ -94,7 +94,7 @@
 #define DNSFLOW_MAX_PARSE		255
 #define DNSFLOW_PKT_MAX_SIZE		65535
 #define DNSFLOW_PKT_TARGET_SIZE		1200
-#define DNSFLOW_VERSION			0
+#define DNSFLOW_VERSION			1
 #define DNSFLOW_PORT			5300
 #define DNSFLOW_UDP_MAX_DSTS		10
 
@@ -117,7 +117,7 @@ struct dnsflow_set_hdr {
 	uint16_t		names_len;
 };
 struct dns_data_set {
-	char 			*names[DNSFLOW_MAX_PARSE];
+	uint8_t 		*names[DNSFLOW_MAX_PARSE];
 	int			name_lens[DNSFLOW_MAX_PARSE];
 	int			num_names;
 	in_addr_t		ips[DNSFLOW_MAX_PARSE];
@@ -407,16 +407,8 @@ dnsflow_dns_check(int pkt_len, char *dns_pkt)
 	return (lp);
 }
 
-static void
-dnsflow_dns_data_free(struct dns_data_set *data)
-{
-	int 	i;
-	for (i = 0; i < data->num_names; i++) {
-		LDNS_FREE(data->names[i]);
-	}
-}
-
-/* Caller must free the names returned. */
+/* NOTE: The names in the returned dns_data_set point to data inside the
+ * ldns_pkt. So, don't free the packet until the names have been copied. */
 static struct dns_data_set *
 dnsflow_dns_extract(ldns_pkt *lp)
 {
@@ -428,7 +420,6 @@ dnsflow_dns_extract(ldns_pkt *lp)
 	ldns_rdf			*rdf;
 
 	int				i, j;
-	char				*str;
 	in_addr_t			*ip_ptr;
 
 
@@ -437,18 +428,12 @@ dnsflow_dns_extract(ldns_pkt *lp)
 
 	q_rr = ldns_rr_list_rr(ldns_pkt_question(lp), 0);
 
-	
-	/* ldns_rdf_size() returns the uncompressed length of an
-	 * encoded name. This happens to exactly equal the lenth of the name
-	 * as a Nul-terminated dotted string. */
 	if (ldns_rdf_size(ldns_rr_owner(q_rr)) > LDNS_MAX_DOMAINLEN) {
 		/* I believe this should never happen for valid DNS. */
 		printf("Invalid query string\n");
 		return (NULL);
 	}
-	str = ldns_rdf2str(ldns_rr_owner(q_rr));
-	/* XXX remove root dot. */
-	data->names[data->num_names] = str;
+	data->names[data->num_names] = ldns_rdf_data(ldns_rr_owner(q_rr));
 	data->name_lens[data->num_names] = ldns_rdf_size(ldns_rr_owner(q_rr));
 	data->num_names++;
 
@@ -456,15 +441,16 @@ dnsflow_dns_extract(ldns_pkt *lp)
 		a_rr = ldns_rr_list_rr(ldns_pkt_answer(lp), i);
 		rr_type = ldns_rr_get_type(a_rr);
 
-		str = ldns_rdf2str(ldns_rr_owner(a_rr));
 		/* XXX Not necessary, remove when we have more confidence. */
+		/*
+		str = ldns_rdf2str(ldns_rr_owner(a_rr));
 		if (strcmp(str, data->names[data->num_names - 1])) {
 			printf("XXX msg not in sequence\n");
 			ldns_pkt_print(stdout, lp);
 		}
 		LDNS_FREE(str);
+		*/
 
-		/* When do you have more than one rd per rr? */
 		for (j = 0; j < ldns_rr_rd_count(a_rr); j++) {
 			rdf = ldns_rr_rdf(a_rr, j);
 
@@ -479,8 +465,8 @@ dnsflow_dns_extract(ldns_pkt *lp)
 					printf("Invalid name\n");
 					continue;
 				}
-				str = ldns_rdf2str(rdf);
-				data->names[data->num_names] = str;
+				data->names[data->num_names] =
+					ldns_rdf_data(rdf);
 				data->name_lens[data->num_names] =
 					ldns_rdf_size(rdf);
 				data->num_names++;
@@ -503,7 +489,6 @@ dnsflow_dns_extract(ldns_pkt *lp)
 		return (NULL);
 	}
 	if (data->num_ips == 0) {
-		dnsflow_dns_data_free(data);
 		return (NULL);
 	}
 
@@ -609,7 +594,7 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 			data_buf->db_len = 0;
 			return;
 		}
-		strcpy(pkt_cur, dns_data->names[i]);
+		memcpy(pkt_cur, dns_data->names[i], dns_data->name_lens[i]);
 		data_buf->db_len += dns_data->name_lens[i];
 		pkt_cur = pkt_start + data_buf->db_len;
 	}
@@ -682,16 +667,13 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 		ldns_pkt_free(lp);
 		return;
 	}
-	//ldns_pkt_print(stdout, lp);
-	ldns_pkt_free(lp);
-	lp = NULL;
 
 	/* Should be good to go. */
 	dnsflow_pkt_build(ip->ip_dst.s_addr, dns_data);
 
-	/* Free names */
-	dnsflow_dns_data_free(dns_data);
-
+	//ldns_pkt_print(stdout, lp);
+	ldns_pkt_free(lp);
+	lp = NULL;
 }
 
 static void
