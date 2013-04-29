@@ -112,6 +112,7 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 		return;
 	}
 
+	dcap->pkts_captured++;
 	dcap->callback((struct timeval *)&pkthdr->ts, length, p);
 }
 
@@ -231,6 +232,8 @@ dcap_init_file(char *filename, char *filter, dcap_handler callback)
 	dcap->pcap = pcap;
 	dcap->callback = callback;
 
+	printf("reading from file %s, filter %s\n", filename, filter);
+
 	return (dcap);
 }
 
@@ -246,4 +249,31 @@ dcap_close(struct dcap *dcap)
 	pcap_close(dcap->pcap);
 	free(dcap);
 }
+
+
+struct dcap_stat *
+dcap_get_stats(struct dcap *dcap)
+{
+	static struct dcap_stat		ds;
+	struct pcap_stat		ps;
+
+	bzero(&ds, sizeof(ds));
+	ds.captured = dcap->pkts_captured;
+
+	/* pcap stats not valid for file. */
+	if (pcap_file(dcap->pcap) == NULL) {
+		bzero(&ps, sizeof(ps));
+		if (pcap_stats(dcap->pcap, &ps) < 0) {
+			warnx("pcap_stats: %s", pcap_geterr(dcap->pcap));
+		} else {
+			ds.ps_valid = 1;
+			ds.ps_recv = ps.ps_recv;
+			ds.ps_drop = ps.ps_drop;
+			ds.ps_ifdrop = ps.ps_ifdrop;
+		}
+	}
+
+	return (&ds);
+}
+
 

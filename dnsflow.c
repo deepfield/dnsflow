@@ -194,14 +194,7 @@ static struct timeval		stats_tv = {10, 0};
 
 static struct event		sigterm_ev, sigint_ev;
 
-static uint32_t			pkts_captured = 0;
-
 /* config */
-static char *default_filter =
-	"(udp and src port 53 and udp[10:2] & 0x8187 = 0x8180) or "
-	"(vlan and (udp and src port 53 and udp[10:2] & 0x8187 = 0x8180))";
-
-static char *default_encap_filter_fmt = "udp and dst port %d and udp[%d:2] = 0x0035 and udp[%d:2] & 0x8187 = 0x8180";
 
 /* pcap-record dest port (*network* byte order) */
 static uint16_t pcap_record_dst_port = 0;
@@ -215,6 +208,48 @@ static struct sockaddr_in	dst_so_addrs[DNSFLOW_UDP_MAX_DSTS];
 static pcap_t			*pc_dump = NULL;
 static pcap_dumper_t		*pdump = NULL;
 
+/* encap_offset is the number of bytes between the end of the udp header
+ * and the start of the encapsulated ip header.
+ * Ie., the length of foo bar: ip udp (foo bar) ip udp dns */
+static char *
+build_pcap_filter(int encap_offset)
+{
+	/* Note: according to pcap-filter(7), udp offsets only work for ipv4.
+	 * (Would have to use ip6 offsets.) */
+
+	/* Base offsets from start of udp. */
+	int udp_offset = 0;	/* Offset from udp to encap udp. */
+	/* Label offsets used. */
+	int src_port_offset_base = 0;
+	int dns_flags_offset_base = 10;
+
+	/* Match src port 53 and valid recursive response flags.
+	 * qr=1, rd=1, ra=1, rcode=0.
+	 * XXX Could also pull out just A/AAAA. */
+	char *dns_resp_fmt =
+		"udp and udp[%d:2] = 0x0035 and udp[%d:2] & 0x8187 = 0x8180";
+	char filter_dns_resp[1024];
+
+	char *full_filter_fmt = "(%s) or (vlan and (%s))";
+	static char filter_ret[1024];
+
+	if (encap_offset != 0) {
+		/* udp, encap, ip, udp, dns */
+		udp_offset = sizeof(struct udphdr) + encap_offset +
+			sizeof(struct ip);
+	}
+
+	snprintf(filter_dns_resp, sizeof(filter_dns_resp), dns_resp_fmt,
+			src_port_offset_base + udp_offset,
+			dns_flags_offset_base + udp_offset);
+
+
+	bzero(filter_ret, sizeof(filter_ret));
+	snprintf(filter_ret, sizeof(filter_ret), full_filter_fmt,
+			filter_dns_resp, filter_dns_resp);
+
+	return (filter_ret);
+}
 
 char *
 ts_format(struct timeval *ts)
@@ -633,8 +668,6 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 	ldns_pkt		*lp;
 	struct dns_data_set	*dns_data;
 
-	pkts_captured++;
-
 	if ((udp_data = ip_udp_check(pkt_len, ip_pkt, &ip, &udphdr)) == NULL) {
 		return;
 	}
@@ -677,18 +710,32 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 }
 
 static void
+dnsflow_print_stats(struct dcap_stat *ds)
+{
+	printf("%d packets captured\n", ds->captured);
+	if (ds->ps_valid) {
+		printf("%d packets received by filter\n", ds->ps_recv);
+		printf("%d packets dropped by kernel\n", ds->ps_drop);
+		printf("%d packets dropped by interface\n", ds->ps_ifdrop);
+	}
+}
+
+static void
 dnsflow_stats_cb(int fd, short event, void *arg) 
 {
-	struct pcap_stat		ps;
 	struct dcap			*dcap = (struct dcap *)arg;
+	struct dcap_stat		*ds;
 	struct dnsflow_buf		buf;
+
+	static int			stats_counter = 0;
 
 	evtimer_add(&stats_ev, &stats_tv);
 
-	bzero(&ps, sizeof(ps));
-	if (pcap_stats(dcap->pcap, &ps) < 0) {
-		warnx("pcap_stats: %s", pcap_geterr(dcap->pcap));
-		return;
+	ds = dcap_get_stats(dcap);
+	stats_counter++;
+	if (stats_counter % 6 == 0) {
+		/* Print stats once a minute. */
+		dnsflow_print_stats(ds);
 	}
 
 	bzero(&buf, sizeof(buf));
@@ -702,10 +749,10 @@ dnsflow_stats_cb(int fd, short event, void *arg)
 	buf.db_pkt_hdr.flags = htons(DNSFLOW_FLAG_STATS);
 	buf.db_pkt_hdr.sequence_number = htonl(sequence_number++);
 
-	buf.db_stats_pkt.pkts_captured = htonl(pkts_captured);
-	buf.db_stats_pkt.pkts_received = htonl(ps.ps_recv);
-	buf.db_stats_pkt.pkts_dropped = htonl(ps.ps_drop);
-	buf.db_stats_pkt.pkts_ifdropped = htonl(ps.ps_ifdrop);
+	buf.db_stats_pkt.pkts_captured = htonl(ds->captured);
+	buf.db_stats_pkt.pkts_received = htonl(ds->ps_recv);
+	buf.db_stats_pkt.pkts_dropped = htonl(ds->ps_drop);
+	buf.db_stats_pkt.pkts_ifdropped = htonl(ds->ps_ifdrop);
 
 	dnsflow_pkt_send(&buf);
 }
@@ -713,15 +760,25 @@ dnsflow_stats_cb(int fd, short event, void *arg)
 static void
 signal_cb(int signal, short event, void *arg) 
 {
+	struct dcap			*dcap = (struct dcap *)arg;
+	struct dcap_stat		*ds;
+
+	evtimer_add(&stats_ev, &stats_tv);
+
+	ds = dcap_get_stats(dcap);
+
 	switch (signal) {
 	case SIGINT:
 		printf("\nShutting down.\n");
+		dnsflow_print_stats(ds);
 		if (pdump != NULL) {
 			pcap_dump_close(pdump);
 			pcap_close(pc_dump);
 		}
 		exit(0);
 	case SIGTERM:
+		printf("\nShutting down.\n");
+		dnsflow_print_stats(ds);
 		if (pdump != NULL) {
 			pcap_dump_close(pdump);
 			pcap_close(pc_dump);
@@ -752,7 +809,7 @@ usage(void)
 			"[-J jmirror_port (usually 30030)]\n",
 			__progname);
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
-	fprintf(stderr, "\n  Default filter: %s\n", default_filter);
+	fprintf(stderr, "\n  Default filter: %s\n", build_pcap_filter(0));
 
 	exit(1);
 }
@@ -763,10 +820,10 @@ main(int argc, char *argv[])
 	int			c, rv, promisc = 1;
 	char			*pcap_file_read = NULL, *pcap_file_write = NULL;
 	char			*filter = NULL, *intf_name = NULL;
-	static char		pcap_record_filter[256], jmirror_filter[256];
 	struct dcap		*dcap = NULL;
+	struct dcap_stat	*ds = NULL;
 	struct sockaddr_in	*so_addr = NULL;
-	int			next_udp_offset = 0;
+	int			encap_offset = 0;
 
 	while ((c = getopt(argc, argv, "i:J:r:f:pP:u:w:X:h")) != -1) {
 		switch (c) {
@@ -777,15 +834,7 @@ main(int argc, char *argv[])
 			jmirror_dst_port = htons(atoi(optarg));
 			if (filter == NULL) {
 				/* udp, jmirror, ip, udp, dns */
-				next_udp_offset = sizeof(struct udphdr) +
-					sizeof(struct jmirror_hdr) +
-					sizeof(struct ip);
-				snprintf(jmirror_filter,
-					 sizeof(jmirror_filter),
-					 default_encap_filter_fmt,
-					 ntohs(jmirror_dst_port),
-					 next_udp_offset, next_udp_offset + 10);
-                        	filter = jmirror_filter;
+				encap_offset = sizeof(struct jmirror_hdr);
 			}
 			break;
 		case 'f':
@@ -819,16 +868,8 @@ main(int argc, char *argv[])
 			pcap_record_dst_port = htons(atoi(optarg));
 			if (filter == NULL) {
 				/* udp, pcap header, eth, ip, udp, dns */
-				next_udp_offset = sizeof(struct udphdr) +
-					sizeof(struct pcap_sf_pkthdr) +
-					sizeof(struct ether_header) +
-					sizeof(struct ip);
-				snprintf(pcap_record_filter,
-					 sizeof(pcap_record_filter),
-					 default_encap_filter_fmt,
-					 ntohs(pcap_record_dst_port),
-					 next_udp_offset, next_udp_offset + 10);
-                        	filter = pcap_record_filter;
+				encap_offset = sizeof(struct pcap_sf_pkthdr) +
+					sizeof(struct ether_header);
 			}
 			break;
 		case 'w':
@@ -848,23 +889,13 @@ main(int argc, char *argv[])
 	}
 
 	if (filter == NULL) {
-		filter = default_filter;
+		filter = build_pcap_filter(encap_offset);
 	}
-	printf("Using filter: %s\n", filter);
-
 
 	// Init libevent 
 	event_init();
 	event_set_log_callback(dnsflow_event_log_cb);
 	
-	bzero(&sigterm_ev, sizeof(sigterm_ev));
-	signal_set(&sigterm_ev, SIGTERM, signal_cb, NULL);
-	signal_add(&sigterm_ev, NULL);
-
-	bzero(&sigint_ev, sizeof(sigint_ev));
-	signal_set(&sigint_ev, SIGINT, signal_cb, NULL);
-	signal_add(&sigint_ev, NULL);
-
 	/* Even if the flow pkt isn't full, send any buffered data every
 	 * second. */
 	bzero(&push_ev, sizeof(push_ev));
@@ -885,6 +916,14 @@ main(int argc, char *argv[])
 	if (dcap == NULL) {
 		exit(1);
 	}
+
+	bzero(&sigterm_ev, sizeof(sigterm_ev));
+	signal_set(&sigterm_ev, SIGTERM, signal_cb, dcap);
+	signal_add(&sigterm_ev, NULL);
+
+	bzero(&sigint_ev, sizeof(sigint_ev));
+	signal_set(&sigint_ev, SIGINT, signal_cb, dcap);
+	signal_add(&sigint_ev, NULL);
 
 	if (pcap_file_write != NULL) {
 		pc_dump = pcap_open_dead(DLT_NULL, 65535);
@@ -916,6 +955,10 @@ main(int argc, char *argv[])
 	}
 
 	free(data_buf);
+
+	ds = dcap_get_stats(dcap);
+	dnsflow_print_stats(ds);
+
 	return (0);
 }
 

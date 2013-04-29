@@ -22,6 +22,17 @@ struct dcap {
 	dcap_handler	callback;
 	struct event	ev_pcap[1];
 	struct timeval	ev_tv[1];
+	uint32_t	pkts_captured;
+};
+
+struct dcap_stat {
+	int	ps_valid;	/* pcap stats only valid for live capture. */
+	/* pcap stats */
+	uint32_t ps_recv;
+	uint32_t ps_drop;
+	uint32_t ps_ifdrop;
+
+	uint32_t captured;
 };
 
 
@@ -32,6 +43,7 @@ struct dcap * dcap_init_live(char *intf_name, int promisc, char *filter,
 void dcap_loop_all(struct dcap *dcap);
 void dcap_close(struct dcap *dcap);
 
+struct dcap_stat * dcap_get_stats(struct dcap *dcap);
 
 #endif /* __DCAP_H__*/
 
