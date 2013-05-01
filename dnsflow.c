@@ -210,45 +210,78 @@ static pcap_dumper_t		*pdump = NULL;
 
 /* encap_offset is the number of bytes between the end of the udp header
  * and the start of the encapsulated ip header.
- * Ie., the length of foo bar: ip udp (foo bar) ip udp dns */
+ * Ie., the length of foo bar: ip udp (foo bar) ip udp dns
+ * 
+ * proc_i and num_procs use 1-based numbering.
+ * */
 static char *
-build_pcap_filter(int encap_offset)
+build_pcap_filter(int encap_offset, int proc_i, int num_procs)
 {
 	/* Note: according to pcap-filter(7), udp offsets only work for ipv4.
 	 * (Would have to use ip6 offsets.) */
 
-	/* Base offsets from start of udp. */
+	/* Offsets from start of udp. */
 	int udp_offset = 0;	/* Offset from udp to encap udp. */
 	/* Label offsets used. */
-	int src_port_offset_base = 0;
-	int dns_flags_offset_base = 10;
+	int src_port_offset = 0;
+	int dns_flags_offset = 10;
+
+	/* Offsets from start of ip. */
+	int ip_offset = 0;	/* Offset from ip to encap ip. */
+	/* Label offsets used. */
+	int src_ip_offset = 12;
 
 	/* Match src port 53 and valid recursive response flags.
 	 * qr=1, rd=1, ra=1, rcode=0.
 	 * XXX Could also pull out just A/AAAA. */
 	char *dns_resp_fmt =
 		"udp and udp[%d:2] = 0x0035 and udp[%d:2] & 0x8187 = 0x8180";
-	char filter_dns_resp[1024];
+	char dns_resp_filter[1024];
 
+	/* Select based on client ip.
+	 * Probably never a problem, but doing offset from ip, so ip options
+	 * will break view into encap. */
+	char *multi_proc_fmt = "%s and ip[%d:4] & 0x%x = 0x%x";
+	char multi_proc_filter[1024];
+
+	/* The final filter returned in static buf. Incorporates one level
+	 * of vlan encapsulation. */
 	char *full_filter_fmt = "(%s) or (vlan and (%s))";
-	static char filter_ret[1024];
+	static char full_filter_ret[1024];
 
 	if (encap_offset != 0) {
-		/* udp, encap, ip, udp, dns */
+		/* udp, encap, ip, udp */
 		udp_offset = sizeof(struct udphdr) + encap_offset +
 			sizeof(struct ip);
+		/* ip, udp, encap, ip */
+		ip_offset = sizeof(struct ip) + sizeof(struct udphdr) +
+			encap_offset;
 	}
 
-	snprintf(filter_dns_resp, sizeof(filter_dns_resp), dns_resp_fmt,
-			src_port_offset_base + udp_offset,
-			dns_flags_offset_base + udp_offset);
+	/* Base dns filter */
+	snprintf(dns_resp_filter, sizeof(dns_resp_filter), dns_resp_fmt,
+			src_port_offset + udp_offset,
+			dns_flags_offset + udp_offset);
+
+	if (num_procs > 1) {
+		/* Add multi-proc filter. This only works if num_procs is a
+		 * power of 2. */
+		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
+			multi_proc_fmt, dns_resp_filter,
+			src_ip_offset + ip_offset, num_procs - 1, proc_i - 1);
+
+	} else {
+		/* Just copy base dns filter. */
+		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
+				"%s", dns_resp_filter);
+	}
 
 
-	bzero(filter_ret, sizeof(filter_ret));
-	snprintf(filter_ret, sizeof(filter_ret), full_filter_fmt,
-			filter_dns_resp, filter_dns_resp);
+	bzero(full_filter_ret, sizeof(full_filter_ret));
+	snprintf(full_filter_ret, sizeof(full_filter_ret), full_filter_fmt,
+			multi_proc_filter, multi_proc_filter);
 
-	return (filter_ret);
+	return (full_filter_ret);
 }
 
 char *
@@ -804,12 +837,15 @@ usage(void)
 	extern char *__progname;
 
 	fprintf(stderr, "Usage: %s [-hp] [-i interface] [-r pcap_file] "
-			"[-P pidfile] [-f filter_expression]\n"
-			"\t[-X pcap_record_recv_port] "
-			"[-J jmirror_port (usually 30030)]\n",
-			__progname);
+			"[-f filter_expression]\n", __progname);
+	fprintf(stderr, "\t[-P pidfile]  [-m proc_i/n_procs]\n");
+	/* Encap options */
+	fprintf(stderr, "\t[-X pcap_record_recv_port] "
+			"[-J jmirror_port (usually 30030)]\n");
+	/* Output options */
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
-	fprintf(stderr, "\n  Default filter: %s\n", build_pcap_filter(0));
+
+	fprintf(stderr, "\n  Default filter: %s\n", build_pcap_filter(0, 1, 1));
 
 	exit(1);
 }
@@ -824,8 +860,9 @@ main(int argc, char *argv[])
 	struct dcap_stat	*ds = NULL;
 	struct sockaddr_in	*so_addr = NULL;
 	int			encap_offset = 0;
+	uint32_t		n_procs = 1, proc_i = 1;
 
-	while ((c = getopt(argc, argv, "i:J:r:f:pP:u:w:X:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:m:pP:u:w:X:h")) != -1) {
 		switch (c) {
 		case 'i':
 			intf_name = optarg;
@@ -839,6 +876,21 @@ main(int argc, char *argv[])
 			break;
 		case 'f':
 			filter = optarg;
+			break;
+		case 'm':
+			if (sscanf(optarg, "%u/%u", &proc_i, &n_procs) !=2 ) {
+				errx(1, "invalid multiproc option -- %s",
+						optarg);
+			}
+			/* n_procs must be power of 2 for pcap filter. */
+			if (n_procs == 0 || (n_procs & (n_procs - 1)) != 0) {
+				errx(1, "invalid multiproc option -- %s",
+						optarg);
+			}
+			if (proc_i == 0 || proc_i > n_procs) {
+				errx(1, "invalid multiproc option -- %s",
+						optarg);
+			}
 			break;
 		case 'p':
 			promisc = 0;
@@ -889,7 +941,7 @@ main(int argc, char *argv[])
 	}
 
 	if (filter == NULL) {
-		filter = build_pcap_filter(encap_offset);
+		filter = build_pcap_filter(encap_offset, proc_i, n_procs);
 	}
 
 	// Init libevent 
