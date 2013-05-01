@@ -229,7 +229,7 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs)
 	/* Offsets from start of ip. */
 	int ip_offset = 0;	/* Offset from ip to encap ip. */
 	/* Label offsets used. */
-	int src_ip_offset = 12;
+	int dst_ip_offset = 16;
 
 	/* Match src port 53 and valid recursive response flags.
 	 * qr=1, rd=1, ra=1, rcode=0.
@@ -268,7 +268,7 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs)
 		 * power of 2. */
 		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
 			multi_proc_fmt, dns_resp_filter,
-			src_ip_offset + ip_offset, num_procs - 1, proc_i - 1);
+			dst_ip_offset + ip_offset, num_procs - 1, proc_i - 1);
 
 	} else {
 		/* Just copy base dns filter. */
