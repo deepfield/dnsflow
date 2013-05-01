@@ -745,11 +745,11 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 static void
 dnsflow_print_stats(struct dcap_stat *ds)
 {
-	printf("%d packets captured\n", ds->captured);
+	printf("%u packets captured\n", ds->captured);
 	if (ds->ps_valid) {
-		printf("%d packets received by filter\n", ds->ps_recv);
-		printf("%d packets dropped by kernel\n", ds->ps_drop);
-		printf("%d packets dropped by interface\n", ds->ps_ifdrop);
+		printf("%u packets received by filter\n", ds->ps_recv);
+		printf("%u packets dropped by kernel\n", ds->ps_drop);
+		printf("%u packets dropped by interface\n", ds->ps_ifdrop);
 	}
 }
 
