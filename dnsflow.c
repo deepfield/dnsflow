@@ -59,6 +59,9 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#if __linux__
+#include <sys/prctl.h>
+#endif
 
 #include <errno.h>
 #include <math.h>
@@ -295,9 +298,16 @@ check_parent_cb(int fd, short event, void *arg)
 static void
 check_parent_setup(struct dcap *dcap)
 {
+#if __linux__
+	/* Linux provides a more efficient way to check for parent exit. */
+	if (prctl(PR_SET_PDEATHSIG, SIGUSR1) == -1) {
+		errx(1, "prctl failed");
+	}
+#else
 	bzero(&check_parent_ev, sizeof(check_parent_ev));
 	evtimer_set(&check_parent_ev, check_parent_cb, dcap);
 	evtimer_add(&check_parent_ev, &check_parent_tv);
+#endif
 }
 
 /* Returns the proc number for this process. The parent is always 1. */
