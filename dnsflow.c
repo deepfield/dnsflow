@@ -198,8 +198,10 @@ static struct timeval		push_tv = {1, 0};
 static struct event		stats_ev;
 static struct timeval		stats_tv = {10, 0};
 
+#if !__linux__
 static struct event		check_parent_ev;
 static struct timeval		check_parent_tv = {1, 0};
+#endif
 
 static struct event		sigterm_ev, sigint_ev, sigchld_ev;
 
