@@ -277,10 +277,10 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs)
 		"udp and udp[%d:2] = 0x0035 and udp[%d:2] & 0x8187 = 0x8180";
 	char dns_resp_filter[1024];
 
-	/* Select based on client ip.
+	/* Select based on mod of client ip.
 	 * Probably never a problem, but doing offset from ip, so ip options
 	 * will break view into encap. */
-	char *multi_proc_fmt = "%s and ip[%d:4] & 0x%x = 0x%x";
+	char *multi_proc_fmt = "%s and ip[%d:4] - ip[%d:4] / %u * %u = %u";
 	char multi_proc_filter[1024];
 
 	/* The final filter returned in static buf. Incorporates one level
@@ -303,15 +303,14 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs)
 			dns_flags_offset + udp_offset);
 
 	if (num_procs > 1) {
-		/* Add multi-proc filter. This only works if num_procs is a
-		 * power of 2.
+		/* Add multi-proc filter.
 		 * Using the client ip as the load balance key. Useful to keep
 		 * each client in same stream. Another possibility would be
 		 * the udp checksum, assuming it's set.  */
 		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
 			multi_proc_fmt, dns_resp_filter,
-			dst_ip_offset + ip_offset, num_procs - 1, proc_i - 1);
-
+			dst_ip_offset + ip_offset, dst_ip_offset + ip_offset, 
+			num_procs, num_procs, proc_i - 1);
 	} else {
 		/* Just copy base dns filter. */
 		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
@@ -924,21 +923,16 @@ main(int argc, char *argv[])
 				errx(1, "invalid multiproc option -- %s",
 						optarg);
 			}
-			/* n_procs must be power of 2 for pcap filter. */
-			if (n_procs == 0 || (n_procs & (n_procs - 1)) != 0) {
-				errx(1, "invalid multiproc option -- %s",
-						optarg);
-			}
-			if (proc_i == 0 || proc_i > n_procs) {
+			if (n_procs == 0 || proc_i == 0 || proc_i > n_procs) {
 				errx(1, "invalid multiproc option -- %s",
 						optarg);
 			}
 			break;
 		case 'M':
 			auto_n_procs = atoi(optarg);
-			/* n_procs must be power of 2 for pcap filter. */
-			if (auto_n_procs == 0 || (auto_n_procs & (auto_n_procs - 1)) != 0) {
-				errx(1, "must be power of 2 -- %s", optarg);
+			if (auto_n_procs == 0) {
+				errx(1, "invalid multiproc option -- %s",
+						optarg);
 			}
 			break;
 		case 'p':
