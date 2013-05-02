@@ -333,6 +333,7 @@ mproc_fork(int num_procs)
 			return (proc_i);
 		} else {
 			/* parent */
+			/* XXX Use process group instead? */
 			mproc_children[n_mproc_children++] = pid;
 		}
 	}
