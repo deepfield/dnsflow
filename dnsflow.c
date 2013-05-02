@@ -64,6 +64,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
@@ -193,6 +194,9 @@ static struct timeval		push_tv = {1, 0};
 static struct event		stats_ev;
 static struct timeval		stats_tv = {10, 0};
 
+static struct event		check_parent_ev;
+static struct timeval		check_parent_tv = {1, 0};
+
 static struct event		sigterm_ev, sigint_ev, sigchld_ev;
 
 /* config */
@@ -212,6 +216,22 @@ static pcap_dumper_t		*pdump = NULL;
 #define MAX_MPROC_CHILDREN	64
 static pid_t			mproc_children[MAX_MPROC_CHILDREN];
 static int			n_mproc_children = 0;
+static pid_t			my_pid;
+
+
+static void
+_log(const char *format, ...)
+{
+	char		buf[1024];
+	va_list		args;
+
+	va_start(args, format);
+	vsnprintf(buf, sizeof(buf), format, args);
+	va_end(args);
+
+	fprintf(stderr, "[%d]: %s\n", my_pid, buf);
+}
+
 
 /* Add up to 1 sec of jitter. */
 static struct timeval *
@@ -219,6 +239,64 @@ jitter_tv(struct timeval *tv)
 {
 	tv->tv_usec = random() % 1000000;
 	return (tv);
+}
+
+static void
+dnsflow_print_stats(struct dcap_stat *ds)
+{
+	_log("%u packets captured", ds->captured);
+	if (ds->ps_valid) {
+		_log("%u packets received by filter", ds->ps_recv);
+		_log("%u packets dropped by kernel", ds->ps_drop);
+		_log("%u packets dropped by interface", ds->ps_ifdrop);
+	}
+}
+
+static void
+clean_exit(struct dcap *dcap)
+{
+	struct dcap_stat		*ds;
+	int				i;
+
+	if (n_mproc_children != 0) {
+		/* Tell children to exit. */
+		for (i = 0; i < n_mproc_children; i++) {
+			kill(mproc_children[i], SIGTERM);
+		}
+	}
+
+	_log("Shutting down.");
+	ds = dcap_get_stats(dcap);
+	dnsflow_print_stats(ds);
+	if (pdump != NULL) {
+		pcap_dump_close(pdump);
+		pcap_close(pc_dump);
+	}
+
+	exit(0);
+}
+
+static void
+check_parent_cb(int fd, short event, void *arg) 
+{
+	struct dcap			*dcap = (struct dcap *)arg;
+
+	if (getppid() == 1) {
+		/* orphaned */
+		_log("parent exited");
+		clean_exit(dcap);
+	}
+	evtimer_add(&check_parent_ev, &check_parent_tv);
+}
+
+/* When running in multi-proc mode, if the parent dies, want to make sure the
+ * children exit. */
+static void
+check_parent_setup(struct dcap *dcap)
+{
+	bzero(&check_parent_ev, sizeof(check_parent_ev));
+	evtimer_set(&check_parent_ev, check_parent_cb, dcap);
+	evtimer_add(&check_parent_ev, &check_parent_tv);
 }
 
 /* Returns the proc number for this process. The parent is always 1. */
@@ -236,6 +314,7 @@ mproc_fork(int num_procs)
 			errx(1, "fork error");
 		} else if (pid == 0) {
 			/* child */
+			n_mproc_children = 0;
 			return (proc_i);
 		} else {
 			/* parent */
@@ -484,7 +563,7 @@ dnsflow_dns_check(int pkt_len, char *dns_pkt)
 
 	status = ldns_wire2pkt(&lp, (uint8_t *)dns_pkt, pkt_len);
 	if (status != LDNS_STATUS_OK) {
-		printf("Bad DNS pkt: %s\n", ldns_get_errorstr_by_id(status));
+		_log("Bad DNS pkt: %s", ldns_get_errorstr_by_id(status));
 		return (NULL);
 	}
 
@@ -539,7 +618,7 @@ dnsflow_dns_extract(ldns_pkt *lp)
 
 	if (ldns_rdf_size(ldns_rr_owner(q_rr)) > LDNS_MAX_DOMAINLEN) {
 		/* I believe this should never happen for valid DNS. */
-		printf("Invalid query string\n");
+		_log("Invalid query string");
 		return (NULL);
 	}
 	data->names[data->num_names] = ldns_rdf_data(ldns_rr_owner(q_rr));
@@ -554,7 +633,7 @@ dnsflow_dns_extract(ldns_pkt *lp)
 		/*
 		str = ldns_rdf2str(ldns_rr_owner(a_rr));
 		if (strcmp(str, data->names[data->num_names - 1])) {
-			printf("XXX msg not in sequence\n");
+			_log("XXX msg not in sequence");
 			ldns_pkt_print(stdout, lp);
 		}
 		LDNS_FREE(str);
@@ -565,13 +644,13 @@ dnsflow_dns_extract(ldns_pkt *lp)
 
 			if (rr_type == LDNS_RR_TYPE_CNAME) {
 				if (data->num_names == DNSFLOW_MAX_PARSE) {
-					printf("Too many names\n");
+					_log("Too many names");
 					continue;
 				}
 				if (ldns_rdf_size(rdf) > LDNS_MAX_DOMAINLEN) {
 					/* Again, I believe this should never
 					 * happen. */
-					printf("Invalid name\n");
+					_log("Invalid name");
 					continue;
 				}
 				data->names[data->num_names] =
@@ -581,7 +660,7 @@ dnsflow_dns_extract(ldns_pkt *lp)
 				data->num_names++;
 			} else if (rr_type == LDNS_RR_TYPE_A) {
 				if (data->num_ips == DNSFLOW_MAX_PARSE) {
-					printf("Too many ips\n");
+					_log("Too many ips");
 					continue;
 				}
 				ip_ptr = (in_addr_t *) ldns_rdf_data(rdf);
@@ -699,7 +778,7 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 	for (i = 0; i < set_hdr->names_count; i++) {
 		if (dns_data->name_lens[i] > pkt_end - pkt_cur) {
 			/* Not enough room. Shouldn't happen. */
-			printf("Pkt create error\n");
+			_log("Pkt create error");
 			data_buf->db_len = 0;
 			return;
 		}
@@ -784,17 +863,6 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
 }
 
 static void
-dnsflow_print_stats(struct dcap_stat *ds)
-{
-	printf("%u packets captured\n", ds->captured);
-	if (ds->ps_valid) {
-		printf("%u packets received by filter\n", ds->ps_recv);
-		printf("%u packets dropped by kernel\n", ds->ps_drop);
-		printf("%u packets dropped by interface\n", ds->ps_ifdrop);
-	}
-}
-
-static void
 dnsflow_stats_cb(int fd, short event, void *arg) 
 {
 	struct dcap			*dcap = (struct dcap *)arg;
@@ -835,25 +903,19 @@ static void
 signal_cb(int signal, short event, void *arg) 
 {
 	struct dcap			*dcap = (struct dcap *)arg;
-	struct dcap_stat		*ds;
 	int				stat_loc;
 	pid_t				pid;
 
 	switch (signal) {
 	case SIGINT:
 	case SIGTERM:
-		printf("\nShutting down.\n");
-		ds = dcap_get_stats(dcap);
-		dnsflow_print_stats(ds);
-		if (pdump != NULL) {
-			pcap_dump_close(pdump);
-			pcap_close(pc_dump);
-		}
-		exit(0);
+		_log("received exit signal: %d", signal);
+		clean_exit(dcap);	/* Doesn't return. */
+		break;
 	case SIGCHLD:
 		pid = wait(&stat_loc);
-		/* XXX Should probably kill all since we'll be missing data. */
-		printf("child exited: %d\n", pid);
+		_log("child exited: %d", pid);
+		clean_exit(dcap);
 		break;
 	default:
 		errx(1, "caught unexpected signal: %d", signal);
@@ -869,7 +931,7 @@ dnsflow_event_log_cb(int severity, const char *msg)
 	if (severity == _EVENT_LOG_DEBUG) {
 		return;
 	}
-	printf("event: %d: %s\n", severity, msg);
+	_log("event: %d: %s", severity, msg);
 }
 
 static void
@@ -902,6 +964,7 @@ main(int argc, char *argv[])
 	struct sockaddr_in	*so_addr = NULL;
 	int			encap_offset = 0;
 	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
+	int			is_child = 0;
 
 	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:u:w:X:h")) != -1) {
 		switch (c) {
@@ -985,9 +1048,15 @@ main(int argc, char *argv[])
 
 	/* Fork if requested, and not done manually. */
 	if (n_procs == 1 && auto_n_procs > 0) {
-		proc_i = mproc_fork(auto_n_procs);
+		if (pcap_file_write != NULL) {
+			errx(1, "can't use -w and -M together");
+		}
+		if ((proc_i = mproc_fork(auto_n_procs)) != 1) {
+			is_child = 1;
+		}
 		n_procs = auto_n_procs;
 	}
+	my_pid = getpid();
 
 	/* Need some randomness for jitter. */
 	srandom(getpid());
@@ -996,24 +1065,6 @@ main(int argc, char *argv[])
 	 * event_reinit() */
 	event_init();
 	event_set_log_callback(dnsflow_event_log_cb);
-	
-	/* Even if the flow pkt isn't full, send any buffered data every
-	 * second. */
-	bzero(&push_ev, sizeof(push_ev));
-	evtimer_set(&push_ev, dnsflow_push_cb, NULL);
-	evtimer_add(&push_ev, jitter_tv(&push_tv));
-
-	bzero(&sigterm_ev, sizeof(sigterm_ev));
-	signal_set(&sigterm_ev, SIGTERM, signal_cb, dcap);
-	signal_add(&sigterm_ev, NULL);
-
-	bzero(&sigint_ev, sizeof(sigint_ev));
-	signal_set(&sigint_ev, SIGINT, signal_cb, dcap);
-	signal_add(&sigint_ev, NULL);
-
-	bzero(&sigchld_ev, sizeof(sigchld_ev));
-	signal_set(&sigchld_ev, SIGCHLD, signal_cb, dcap);
-	signal_add(&sigchld_ev, NULL);
 
 	if (filter == NULL) {
 		filter = build_pcap_filter(encap_offset, proc_i, n_procs);
@@ -1033,6 +1084,30 @@ main(int argc, char *argv[])
 	}
 	if (dcap == NULL) {
 		exit(1);
+	}
+
+	/* Even if the flow pkt isn't full, send any buffered data every
+	 * second. */
+	bzero(&push_ev, sizeof(push_ev));
+	evtimer_set(&push_ev, dnsflow_push_cb, NULL);
+	evtimer_add(&push_ev, jitter_tv(&push_tv));
+
+	/* Set signal handlers. Do after dcap_init so dcap can be passed
+	 * as arg. */
+	bzero(&sigterm_ev, sizeof(sigterm_ev));
+	signal_set(&sigterm_ev, SIGTERM, signal_cb, dcap);
+	signal_add(&sigterm_ev, NULL);
+
+	bzero(&sigint_ev, sizeof(sigint_ev));
+	signal_set(&sigint_ev, SIGINT, signal_cb, dcap);
+	signal_add(&sigint_ev, NULL);
+
+	bzero(&sigchld_ev, sizeof(sigchld_ev));
+	signal_set(&sigchld_ev, SIGCHLD, signal_cb, dcap);
+	signal_add(&sigchld_ev, NULL);
+
+	if (is_child) {
+		check_parent_setup(dcap);
 	}
 
 	if (pcap_file_write != NULL) {
