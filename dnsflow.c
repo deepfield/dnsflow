@@ -68,6 +68,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <err.h>
+#include <assert.h>
 
 #include <arpa/inet.h>
 #include <netinet/ip.h>
@@ -192,7 +193,7 @@ static struct timeval		push_tv = {1, 0};
 static struct event		stats_ev;
 static struct timeval		stats_tv = {10, 0};
 
-static struct event		sigterm_ev, sigint_ev;
+static struct event		sigterm_ev, sigint_ev, sigchld_ev;
 
 /* config */
 
@@ -207,6 +208,44 @@ static struct sockaddr_in	dst_so_addrs[DNSFLOW_UDP_MAX_DSTS];
 
 static pcap_t			*pc_dump = NULL;
 static pcap_dumper_t		*pdump = NULL;
+
+#define MAX_MPROC_CHILDREN	64
+static pid_t			mproc_children[MAX_MPROC_CHILDREN];
+static int			n_mproc_children = 0;
+
+/* Add up to 1 sec of jitter. */
+static struct timeval *
+jitter_tv(struct timeval *tv)
+{
+	tv->tv_usec = random() % 1000000;
+	return (tv);
+}
+
+/* Returns the proc number for this process. The parent is always 1. */
+static int
+mproc_fork(int num_procs)
+{
+	int	proc_i;
+	pid_t	pid;
+
+	assert(num_procs <= MAX_MPROC_CHILDREN);
+
+	/* proc_i is 1-based. 1 is parent; start at 2. */
+	for (proc_i = 2; proc_i <= num_procs; proc_i++) {
+		if((pid = fork()) < 0) {
+			errx(1, "fork error");
+		} else if (pid == 0) {
+			/* child */
+			return (proc_i);
+		} else {
+			/* parent */
+			mproc_children[n_mproc_children++] = pid;
+		}
+	}
+
+	/* parent gets slot 1. */
+	return (1);
+}
 
 /* encap_offset is the number of bytes between the end of the udp header
  * and the start of the encapsulated ip header.
@@ -265,7 +304,10 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs)
 
 	if (num_procs > 1) {
 		/* Add multi-proc filter. This only works if num_procs is a
-		 * power of 2. */
+		 * power of 2.
+		 * Using the client ip as the load balance key. Useful to keep
+		 * each client in same stream. Another possibility would be
+		 * the udp checksum, assuming it's set.  */
 		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
 			multi_proc_fmt, dns_resp_filter,
 			dst_ip_offset + ip_offset, num_procs - 1, proc_i - 1);
@@ -617,7 +659,7 @@ dnsflow_push_cb(int fd, short event, void *arg)
 	if (now - last_send >= push_tv.tv_sec) {
 		dnsflow_pkt_send_data();
 	}
-	evtimer_add(&push_ev, &push_tv);
+	evtimer_add(&push_ev, jitter_tv(&push_tv));
 }
 
 /* XXX Need more care to prevent buffer overruns. */
@@ -762,7 +804,7 @@ dnsflow_stats_cb(int fd, short event, void *arg)
 
 	static int			stats_counter = 0;
 
-	evtimer_add(&stats_ev, &stats_tv);
+	evtimer_add(&stats_ev, jitter_tv(&stats_tv));
 
 	ds = dcap_get_stats(dcap);
 	stats_counter++;
@@ -795,28 +837,28 @@ signal_cb(int signal, short event, void *arg)
 {
 	struct dcap			*dcap = (struct dcap *)arg;
 	struct dcap_stat		*ds;
-
-	evtimer_add(&stats_ev, &stats_tv);
-
-	ds = dcap_get_stats(dcap);
+	int				stat_loc;
+	pid_t				pid;
 
 	switch (signal) {
 	case SIGINT:
-		printf("\nShutting down.\n");
-		dnsflow_print_stats(ds);
-		if (pdump != NULL) {
-			pcap_dump_close(pdump);
-			pcap_close(pc_dump);
-		}
-		exit(0);
 	case SIGTERM:
 		printf("\nShutting down.\n");
+		ds = dcap_get_stats(dcap);
 		dnsflow_print_stats(ds);
 		if (pdump != NULL) {
 			pcap_dump_close(pdump);
 			pcap_close(pc_dump);
 		}
 		exit(0);
+	case SIGCHLD:
+		pid = wait(&stat_loc);
+		/* XXX Should probably kill all since we'll be missing data. */
+		printf("child exited: %d\n", pid);
+		break;
+	default:
+		errx(1, "caught unexpected signal: %d", signal);
+		break;
 	}
 
 }
@@ -838,7 +880,7 @@ usage(void)
 
 	fprintf(stderr, "Usage: %s [-hp] [-i interface] [-r pcap_file] "
 			"[-f filter_expression]\n", __progname);
-	fprintf(stderr, "\t[-P pidfile]  [-m proc_i/n_procs]\n");
+	fprintf(stderr, "\t[-P pidfile]  [-m proc_i/n_procs] [-M n_procs]\n");
 	/* Encap options */
 	fprintf(stderr, "\t[-X pcap_record_recv_port] "
 			"[-J jmirror_port (usually 30030)]\n");
@@ -860,9 +902,9 @@ main(int argc, char *argv[])
 	struct dcap_stat	*ds = NULL;
 	struct sockaddr_in	*so_addr = NULL;
 	int			encap_offset = 0;
-	uint32_t		n_procs = 1, proc_i = 1;
+	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
 
-	while ((c = getopt(argc, argv, "i:J:r:f:m:pP:u:w:X:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:u:w:X:h")) != -1) {
 		switch (c) {
 		case 'i':
 			intf_name = optarg;
@@ -890,6 +932,13 @@ main(int argc, char *argv[])
 			if (proc_i == 0 || proc_i > n_procs) {
 				errx(1, "invalid multiproc option -- %s",
 						optarg);
+			}
+			break;
+		case 'M':
+			auto_n_procs = atoi(optarg);
+			/* n_procs must be power of 2 for pcap filter. */
+			if (auto_n_procs == 0 || (auto_n_procs & (auto_n_procs - 1)) != 0) {
+				errx(1, "must be power of 2 -- %s", optarg);
 			}
 			break;
 		case 'p':
@@ -940,11 +989,17 @@ main(int argc, char *argv[])
 		errx(1, "output dst missing");
 	}
 
-	if (filter == NULL) {
-		filter = build_pcap_filter(encap_offset, proc_i, n_procs);
+	/* Fork if requested, and not done manually. */
+	if (n_procs == 1 && auto_n_procs > 0) {
+		proc_i = mproc_fork(auto_n_procs);
+		n_procs = auto_n_procs;
 	}
 
-	// Init libevent 
+	/* Need some randomness for jitter. */
+	srandom(getpid());
+
+	/* Init libevent - must happen after fork on os x (kqueue), or use
+	 * event_reinit() */
 	event_init();
 	event_set_log_callback(dnsflow_event_log_cb);
 	
@@ -952,8 +1007,25 @@ main(int argc, char *argv[])
 	 * second. */
 	bzero(&push_ev, sizeof(push_ev));
 	evtimer_set(&push_ev, dnsflow_push_cb, NULL);
-	evtimer_add(&push_ev, &push_tv);
+	evtimer_add(&push_ev, jitter_tv(&push_tv));
 
+	bzero(&sigterm_ev, sizeof(sigterm_ev));
+	signal_set(&sigterm_ev, SIGTERM, signal_cb, dcap);
+	signal_add(&sigterm_ev, NULL);
+
+	bzero(&sigint_ev, sizeof(sigint_ev));
+	signal_set(&sigint_ev, SIGINT, signal_cb, dcap);
+	signal_add(&sigint_ev, NULL);
+
+	bzero(&sigchld_ev, sizeof(sigchld_ev));
+	signal_set(&sigchld_ev, SIGCHLD, signal_cb, dcap);
+	signal_add(&sigchld_ev, NULL);
+
+	if (filter == NULL) {
+		filter = build_pcap_filter(encap_offset, proc_i, n_procs);
+	}
+
+	/* Init pcap */
 	if (pcap_file_read != NULL) {
 		dcap = dcap_init_file(pcap_file_read, filter, dnsflow_dcap_cb);
 	} else {
@@ -963,19 +1035,11 @@ main(int argc, char *argv[])
 		/* Send pcap stats every 10sec. */
 		bzero(&stats_ev, sizeof(stats_ev));
 		evtimer_set(&stats_ev, dnsflow_stats_cb, dcap);
-		evtimer_add(&stats_ev, &stats_tv);
+		evtimer_add(&stats_ev, jitter_tv(&stats_tv));
 	}
 	if (dcap == NULL) {
 		exit(1);
 	}
-
-	bzero(&sigterm_ev, sizeof(sigterm_ev));
-	signal_set(&sigterm_ev, SIGTERM, signal_cb, dcap);
-	signal_add(&sigterm_ev, NULL);
-
-	bzero(&sigint_ev, sizeof(sigint_ev));
-	signal_set(&sigint_ev, SIGINT, signal_cb, dcap);
-	signal_add(&sigint_ev, NULL);
 
 	if (pcap_file_write != NULL) {
 		pc_dump = pcap_open_dead(DLT_NULL, 65535);
@@ -991,6 +1055,7 @@ main(int argc, char *argv[])
 	data_buf = calloc(1, sizeof(struct dnsflow_buf) + DNSFLOW_PKT_MAX_SIZE);
 	data_buf->db_type = DNSFLOW_DATA;
 
+	/* Pcap/event loop */
 	if (pcap_file_read != NULL) {
 		dcap_loop_all(dcap);
 		dcap_close(dcap);
