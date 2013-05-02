@@ -280,6 +280,7 @@ clean_exit(struct dcap *dcap)
 	exit(0);
 }
 
+#if !__linux__
 static void
 check_parent_cb(int fd, short event, void *arg) 
 {
@@ -292,6 +293,7 @@ check_parent_cb(int fd, short event, void *arg)
 	}
 	evtimer_add(&check_parent_ev, &check_parent_tv);
 }
+#endif
 
 /* When running in multi-proc mode, if the parent dies, want to make sure the
  * children exit. */
