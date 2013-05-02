@@ -58,6 +58,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #include <errno.h>
 #include <math.h>
