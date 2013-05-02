@@ -304,7 +304,7 @@ check_parent_setup(struct dcap *dcap)
 {
 #if __linux__
 	/* Linux provides a more efficient way to check for parent exit. */
-	if (prctl(PR_SET_PDEATHSIG, SIGUSR1) == -1) {
+	if (prctl(PR_SET_PDEATHSIG, SIGTERM) == -1) {
 		errx(1, "prctl failed");
 	}
 #else
