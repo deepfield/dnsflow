@@ -213,6 +213,7 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 
 	dcap = calloc(1, sizeof(struct dcap));
 	dcap->pcap = pcap;
+	snprintf(dcap->intf_name, sizeof(dcap->intf_name), "%s", intf_name);
 	dcap->callback = callback;
 
 	/* Not totally sure what's going on, but it seems bpf won't mark the fd
@@ -230,8 +231,6 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 		pcap_close(pcap);
 		return (NULL);
 	}
-
-	printf("listening on %s, filter %s\n", intf_name, filter);
 
 	return (dcap);
 }

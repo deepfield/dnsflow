@@ -19,6 +19,7 @@ typedef void (*dcap_handler)(struct timeval *tv, int pkt_len, char *ip_pkt);
 
 struct dcap {
 	pcap_t		*pcap;
+	char		intf_name[128];
 	dcap_handler	callback;
 	struct event	ev_pcap[1];
 	struct timeval	ev_tv[1];

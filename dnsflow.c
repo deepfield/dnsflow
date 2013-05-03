@@ -1092,6 +1092,10 @@ main(int argc, char *argv[])
 	} else {
 		dcap = dcap_init_live(intf_name, promisc, filter,
 				dnsflow_dcap_cb);
+		if (dcap == NULL) {
+			errx(1, "dcap_init failed");
+		}
+		_log("listening on %s, filter %s\n", dcap->intf_name, filter);
 
 		/* Send pcap stats every 10sec. */
 		bzero(&stats_ev, sizeof(stats_ev));
