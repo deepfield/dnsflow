@@ -1,11 +1,16 @@
 This is DNSFlow version 1.0
 Lightweight DNS telemetry
 
+# Quick start
+ * [Download the latest release](https://github.com/deepfield/dnsflow/archive/master.tar.gz).
+ * Install Dependencies
+ * Build dnsflow
+
 # Building
-See manual build building all packages manually
 ```
 cd dnsflow
 make
+make install  # optional
 ```
 
 # Dependencies
