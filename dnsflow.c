@@ -1095,7 +1095,7 @@ main(int argc, char *argv[])
 		if (dcap == NULL) {
 			errx(1, "dcap_init failed");
 		}
-		_log("listening on %s, filter %s\n", dcap->intf_name, filter);
+		_log("listening on %s, filter %s", dcap->intf_name, filter);
 
 		/* Send pcap stats every 10sec. */
 		bzero(&stats_ev, sizeof(stats_ev));
