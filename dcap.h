@@ -22,7 +22,6 @@ struct dcap {
 	char		intf_name[128];
 	dcap_handler	callback;
 	struct event	ev_pcap[1];
-	struct timeval	ev_tv[1];
 	uint32_t	pkts_captured;
 };
 
@@ -41,6 +40,8 @@ struct dcap * dcap_init_file(char *filename, char *filter,
 		dcap_handler callback);
 struct dcap * dcap_init_live(char *intf_name, int promisc, char *filter,
 		dcap_handler callback);
+int dcap_event_set(struct dcap *dcap);
+int dcap_get_fd(struct dcap *dcap);
 void dcap_loop_all(struct dcap *dcap);
 void dcap_close(struct dcap *dcap);
 

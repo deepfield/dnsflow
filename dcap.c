@@ -118,18 +118,53 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	dcap->callback((struct timeval *)&pkthdr->ts, length, p);
 }
 
+/* Returns fd if you want to set up libevent yourself. */
+int
+dcap_get_fd(struct dcap *dcap)
+{
+	/* See man page. Apparently it's not always selectable on OS X. */
+	return (pcap_get_selectable_fd(dcap->pcap));
+}
+
 static void
 dcap_event_cb(int fd, short event, void *arg) 
 {
 	struct dcap	*dcap = (struct dcap *)arg;
-	
+#if __APPLE__ && __MACH__
+	struct timeval	ev_tv[1] = {{1, 0}};
+#else
+	struct timeval	*ev_tv = NULL;
+#endif
+
 	/* Use pcap_dispatch with cnt of -1 so entire buffer is processed. */
 	pcap_dispatch(dcap->pcap, -1, 
 			(pcap_handler)dcap_pcap_cb, (u_char *)dcap);
-	event_add(dcap->ev_pcap, dcap->ev_tv);
+	event_add(dcap->ev_pcap, ev_tv);
 }
+/* Use libevent to check for readiness. */
+int
+dcap_event_set(struct dcap *dcap)
+{
+#if __APPLE__ && __MACH__
+	/* Not totally sure what's going on, but it seems bpf won't
+	 * consistently mark the fd as readable, possibly not until the whole
+	 * buffer fills. So, add timeout to handle low packet rates.
+	 * pcap_dispatch() seems to grab any waiting packets, even if the
+	 * buffer hasn't filled.  man pcap_get_selectable_fd has some notes on
+	 * this. */
+	struct timeval	ev_tv[1] = {{1, 0}};
+#else
+	struct timeval	*ev_tv = NULL;
+#endif
+	event_set(dcap->ev_pcap, dcap_get_fd(dcap), EV_READ,
+			dcap_event_cb, dcap);
+	if (event_add(dcap->ev_pcap, ev_tv) < 0) {
+		warnx("event_add error");
+		return (-1);
+	}
 
-
+	return (0);
+}
 
 struct dcap *
 dcap_init_live(char *intf_name, int promisc, char *filter,
@@ -140,7 +175,7 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 	bpf_u_int32		localnet, netmask;
 	struct dcap		*dcap = NULL;
 	pcap_t			*pcap = NULL;
-	int			to_ms, status;
+	int			status;
 
 	/* Basically mirroring how tcpdump sets up pcap. Exceptions noted. */
 	if (intf_name == NULL) {
@@ -175,16 +210,24 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 		return (NULL);
 	}
 	/* What should timeout be? tcpdump just sets to 1000. */
-	to_ms = 1000;
-	if ((status = pcap_set_timeout(pcap, to_ms)) != 0) {
+	if ((status = pcap_set_timeout(pcap, 1000)) != 0) {
 		warnx("%s: pcap_set_timeout failed: %s",
 				intf_name, pcap_statustostr(status));
 		pcap_close(pcap);
 		return (NULL);
 	}
+
 	if ((status = pcap_activate(pcap)) != 0) {
 		warnx("%s: %s\n(%s)", intf_name, pcap_statustostr(status),
 				pcap_geterr(pcap));
+		pcap_close(pcap);
+		return (NULL);
+	}
+
+	/* Using libevent to check for readiness, so set nonblocking. */
+	if ((status = pcap_setnonblock(pcap, 1, errbuf)) !=0) {
+		warnx("pcap_setnonblock failed: %s: %s",
+				pcap_statustostr(status), errbuf);
 		pcap_close(pcap);
 		return (NULL);
 	}
@@ -216,25 +259,8 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 	snprintf(dcap->intf_name, sizeof(dcap->intf_name), "%s", intf_name);
 	dcap->callback = callback;
 
-	/* Not totally sure what's going on, but it seems bpf won't mark the fd
-	 * as readable until the whole buffer fills. (Seems weird - isn't that
-	 * what to_ms is for? May just be an OS X issue) So, add timeout to
-	 * handle low packet rates. pcap_dispatch() seems to grab any waiting
-	 * packets, even if the buffer hasn't filled. */
-	dcap->ev_tv->tv_usec = to_ms * 1000 * 2;
-	/* NOTE: can't use EV_PERSIST with a timeout. */
-	event_set(dcap->ev_pcap, pcap_fileno(pcap), EV_READ,
-			dcap_event_cb, dcap);
-	if (event_add(dcap->ev_pcap, dcap->ev_tv) < 0) {
-		warnx("event_add error");
-		free(dcap);
-		pcap_close(pcap);
-		return (NULL);
-	}
-
 	return (dcap);
 }
-
 
 struct dcap *
 dcap_init_file(char *filename, char *filter, dcap_handler callback)
@@ -284,7 +310,6 @@ dcap_close(struct dcap *dcap)
 	pcap_close(dcap->pcap);
 	free(dcap);
 }
-
 
 struct dcap_stat *
 dcap_get_stats(struct dcap *dcap)

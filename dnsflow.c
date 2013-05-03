@@ -1077,6 +1077,11 @@ main(int argc, char *argv[])
 	/* Need some randomness for jitter. */
 	srandom(getpid());
 
+	/* for testing. Note, event debug only available in libevent2. */
+	/*
+	event_enable_debug_mode();
+	event_enable_debug_logging(EVENT_DBG_ALL);
+	*/
 	/* Init libevent - must happen after fork on os x (kqueue), or use
 	 * event_reinit() */
 	event_init();
@@ -1095,6 +1100,10 @@ main(int argc, char *argv[])
 		if (dcap == NULL) {
 			errx(1, "dcap_init failed");
 		}
+		if (dcap_event_set(dcap) < 0) {
+			errx(1, "dcap_event_set failed");
+		}
+
 		_log("listening on %s, filter %s", dcap->intf_name, filter);
 
 		/* Send pcap stats every 10sec. */
