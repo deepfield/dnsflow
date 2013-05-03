@@ -60,6 +60,8 @@
 #define	ETHERTYPE_VLAN		0x8100		/* IEEE 802.1Q VLAN tagging */
 #endif
 
+#define MAXIMUM_SNAPLEN		65535
+
 static void 
 dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 {
@@ -133,44 +135,78 @@ struct dcap *
 dcap_init_live(char *intf_name, int promisc, char *filter,
 		dcap_handler callback)
 {
-
 	char			errbuf[PCAP_ERRBUF_SIZE];
-        struct bpf_program      bpf;
+	struct bpf_program      bpf_program;
+	bpf_u_int32		localnet, netmask;
 	struct dcap		*dcap = NULL;
 	pcap_t			*pcap = NULL;
-	int			snaplen, to_ms;
-	
+	int			to_ms, status;
+
+	/* Basically mirroring how tcpdump sets up pcap. Exceptions noted. */
 	if (intf_name == NULL) {
 		if ((intf_name = pcap_lookupdev(errbuf)) == NULL) {
-			warnx("no suitable device found");
+			warnx("%s", errbuf);
 			return (NULL);
 		}
 	}
 
-	/* XXX Some parameters we may want to adjust.
-	 * Note also, not setting buffer size (pcap_set_buffer_size). It
-	 * looks like pcap tries to be smart about picking a default, but
-	 * we may need to adjust. */
-	snaplen = 65535;	/* Max pkt size? */
-	to_ms = 100;		/* In theory, the time for bpf to buffer
-				   before marking the fd readable. Although,
-				   apparently doesn't work on linux. */
-	if ((pcap = pcap_open_live(intf_name, snaplen, promisc,
-					to_ms, errbuf)) == NULL) {
-		warnx("%s: capture activation failed", intf_name);
+	if ((pcap = pcap_create(intf_name, errbuf)) == NULL) {
+		warnx("%s", errbuf);
 		return (NULL);
 	}
 
-	if (pcap_compile(pcap, &bpf, filter, 1, 0) < 0) {
-		warnx("filter compile failed: %s", pcap_geterr(pcap));
+	/* Try large enough to hold 1 sec of a GigE interface. */
+	if ((status = pcap_set_buffer_size(pcap, 1000000000 / 8)) != 0) {
+		warnx("%s: Can't set buffer size: %s",
+				intf_name, pcap_statustostr(status));
+		pcap_close(pcap);
+		return (NULL);
+	}
+	if ((status = pcap_set_snaplen(pcap, MAXIMUM_SNAPLEN)) != 0) {
+		warnx("%s: Can't set snapshot length: %s",
+				intf_name, pcap_statustostr(status));
+		pcap_close(pcap);
+		return (NULL);
+	}
+	if ((status = pcap_set_promisc(pcap, promisc)) !=0) {
+		warnx("%s: Can't set promiscuous mode: %s",
+				intf_name, pcap_statustostr(status));
+		pcap_close(pcap);
+		return (NULL);
+	}
+	/* What should timeout be? tcpdump just sets to 1000. */
+	to_ms = 1000;
+	if ((status = pcap_set_timeout(pcap, to_ms)) != 0) {
+		warnx("%s: pcap_set_timeout failed: %s",
+				intf_name, pcap_statustostr(status));
+		pcap_close(pcap);
+		return (NULL);
+	}
+	if ((status = pcap_activate(pcap)) != 0) {
+		warnx("%s: %s\n(%s)", intf_name, pcap_statustostr(status),
+				pcap_geterr(pcap));
+		pcap_close(pcap);
+		return (NULL);
+	}
+
+	/* Get the netmask. Only used for "ip broadcast" filter expression,
+	 * so doesn't really matter. */
+	if (pcap_lookupnet(intf_name, &localnet, &netmask, errbuf) < 0) {
+		/* Not a fatal error, since we don't care. */
+		localnet = 0;
+		netmask = 0;
+		warnx("%s", errbuf);
+	}
+	if (pcap_compile(pcap, &bpf_program, filter, 1, netmask) < 0) {
+		warnx("%s", pcap_geterr(pcap));
 		pcap_close(pcap);
 		return (NULL);
 	}
 
 	/* XXX There's a race here. The pcap is already activated above,
 	 * but we haven't set the filter yet. Could get some unwanted pkts. */
-	if (pcap_setfilter(pcap, &bpf) < 0) {
-		warnx("filter apply failed: %s", pcap_geterr(pcap));
+	if (pcap_setfilter(pcap, &bpf_program) < 0) {
+		warnx("%s", pcap_geterr(pcap));
 		pcap_close(pcap);
 		return (NULL);
 	}
@@ -186,9 +222,9 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 	 * packets, even if the buffer hasn't filled. */
 	dcap->ev_tv->tv_usec = to_ms * 1000 * 2;
 	/* NOTE: can't use EV_PERSIST with a timeout. */
-        event_set(dcap->ev_pcap, pcap_fileno(pcap), EV_READ,
+	event_set(dcap->ev_pcap, pcap_fileno(pcap), EV_READ,
 			dcap_event_cb, dcap);
-        if (event_add(dcap->ev_pcap, dcap->ev_tv) < 0) {
+	if (event_add(dcap->ev_pcap, dcap->ev_tv) < 0) {
 		warnx("event_add error");
 		free(dcap);
 		pcap_close(pcap);
