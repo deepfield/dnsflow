@@ -1,4 +1,4 @@
-This is DNSFlow version 1.0
+This is DNSFlow
 Lightweight DNS telemetry
 
 # Quick start
