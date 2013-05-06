@@ -14,8 +14,9 @@
 #include <netinet/in.h>
 #include <netinet/udp.h>
 #include <pcap/pcap.h>
+#include <event.h>
 
-typedef void (*dcap_handler)(struct timeval *tv, int pkt_len, char *ip_pkt);
+typedef void (*dcap_handler)(struct timeval *tv, int pkt_len, char *ip_pkt, void *user);
 
 struct dcap {
 	pcap_t		*pcap;
@@ -23,6 +24,7 @@ struct dcap {
 	dcap_handler	callback;
 	struct event	ev_pcap[1];
 	uint32_t	pkts_captured;
+	void *user;
 };
 
 struct dcap_stat {

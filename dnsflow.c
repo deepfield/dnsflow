@@ -826,7 +826,7 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 }
 
 static void
-dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt)
+dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt, void *user)
 {
 	struct ip		*ip;
 	struct udphdr		*udphdr;

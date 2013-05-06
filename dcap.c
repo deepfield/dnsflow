@@ -62,6 +62,32 @@
 
 #define MAXIMUM_SNAPLEN		65535
 
+static int
+datalink_offset(int i)
+{
+	switch (i) {
+	case DLT_EN10MB:
+		i = sizeof(struct ether_header);
+		break;
+	case DLT_IEEE802:
+		i = 22;
+		break;
+	case DLT_FDDI:
+		i = 21;
+		break;
+#ifdef DLT_LOOP
+	case DLT_LOOP:
+#endif
+	case DLT_NULL:
+		i = 4;
+		break;
+	default:
+		i = -1;
+		break;
+	}
+	return (i);
+}
+
 static void 
 dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 {
@@ -69,7 +95,7 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	uint16_t		ether_type;
 	pcap_t			*pcap = NULL;
 	struct dcap		*dcap;
-	int			length;
+	int			length, dl, dloff;
 	char			*p;
 
 	if (pkthdr->caplen != pkthdr->len) {
@@ -81,14 +107,14 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	dcap = (struct dcap *) user;
 	pcap = dcap->pcap;
 
-	/* XXX Currently only support Ethernet.
-	 * Should add at least loopback. */
-	if (pcap_datalink(pcap) != DLT_EN10MB) {
-		printf("Unsupported datalink: %d\n", pcap_datalink(pcap));
+	dl = pcap_datalink(pcap);
+	dloff = datalink_offset(dl);
+	if(dloff == -1) {
+		printf("Unsupported datalink: %d\n", dl);
 		return;
 	}
 
-	if (pkthdr->len < sizeof(struct ether_header) + sizeof(struct ip)) {
+	if (pkthdr->len < dloff + sizeof(struct ip)) {
 		printf("Invalid packet: length=%d\n", pkthdr->len);
 		return;
 	}
@@ -96,26 +122,33 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	p = (char *)pkt;
 	length = pkthdr->len;
 
-	eh = (struct ether_header *)p;
-	ether_type = ntohs(eh->ether_type);
-	p += sizeof(struct ether_header);
-	length -= sizeof(struct ether_header);
+	p += dloff;
+	length -= dloff;
 
-	/* Unencapsulate 802.1Q VLAN */
-	/* XXX Only supporting 1 level. Just loop for qinq? */
-	if (ether_type == ETHERTYPE_VLAN) {
-		ether_type = ntohs(*(uint16_t *)(p + 2));
-		p += 4;
-		length -= 4;
-	}
+	if(dl != DLT_NULL 
+#ifdef DLT_LOOP
+		&& dl != DLT_LOOP)
+#endif
+	{
+		eh = (struct ether_header *)p;
+		ether_type = ntohs(eh->ether_type);
 
-	if (ether_type != ETHERTYPE_IP) {
-		printf("Non-ip: ether_type=%d\n", ether_type);
-		return;
+		/* Unencapsulate 802.1Q or ISL VLAN frames */
+		if (ether_type == ETHERTYPE_VLAN) {
+			/* XXX - skip length of VLAN tag */
+			p += ETHERTYPE_VLAN;  
+			eh = (struct ether_header *)p;
+			ether_type = ntohs(eh->ether_type);
+		} 
+
+		if (ether_type != ETHERTYPE_IP) {
+			printf("Non-ip: ether_type=%d\n", ether_type); 
+			return;
+		}
 	}
 
 	dcap->pkts_captured++;
-	dcap->callback((struct timeval *)&pkthdr->ts, length, p);
+	dcap->callback((struct timeval *)&pkthdr->ts, length, p, dcap->user);
 }
 
 /* Returns fd if you want to set up libevent yourself. */
@@ -232,6 +265,11 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 		return (NULL);
 	}
 
+	dcap = calloc(1, sizeof(struct dcap));
+	dcap->pcap = pcap;
+	dcap->callback = callback;
+	dcap->user = NULL;
+
 	/* Get the netmask. Only used for "ip broadcast" filter expression,
 	 * so doesn't really matter. */
 	if (pcap_lookupnet(intf_name, &localnet, &netmask, errbuf) < 0) {
@@ -292,6 +330,7 @@ dcap_init_file(char *filename, char *filter, dcap_handler callback)
 	dcap = calloc(1, sizeof(struct dcap));
 	dcap->pcap = pcap;
 	dcap->callback = callback;
+	dcap->user = NULL;
 
 	printf("reading from file %s, filter %s\n", filename, filter);
 
