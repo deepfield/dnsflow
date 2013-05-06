@@ -105,7 +105,7 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	}
 
 	dcap = (struct dcap *) user;
-	pcap = dcap->pcap;
+	pcap = dcap->_pcap;
 
 	dl = pcap_datalink(pcap);
 	dloff = datalink_offset(dl);
@@ -148,7 +148,7 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	}
 
 	dcap->pkts_captured++;
-	dcap->callback((struct timeval *)&pkthdr->ts, length, p, dcap->user);
+	dcap->_callback((struct timeval *)&pkthdr->ts, length, p, dcap->user);
 }
 
 /* Returns fd if you want to set up libevent yourself. */
@@ -156,7 +156,7 @@ int
 dcap_get_fd(struct dcap *dcap)
 {
 	/* See man page. Apparently it's not always selectable on OS X. */
-	return (pcap_get_selectable_fd(dcap->pcap));
+	return (pcap_get_selectable_fd(dcap->_pcap));
 }
 
 static void
@@ -170,9 +170,9 @@ dcap_event_cb(int fd, short event, void *arg)
 #endif
 
 	/* Use pcap_dispatch with cnt of -1 so entire buffer is processed. */
-	pcap_dispatch(dcap->pcap, -1, 
+	pcap_dispatch(dcap->_pcap, -1, 
 			(pcap_handler)dcap_pcap_cb, (u_char *)dcap);
-	event_add(dcap->ev_pcap, ev_tv);
+	event_add(dcap->_ev_pcap, ev_tv);
 }
 /* Use libevent to check for readiness. */
 int
@@ -189,9 +189,9 @@ dcap_event_set(struct dcap *dcap)
 #else
 	struct timeval	*ev_tv = NULL;
 #endif
-	event_set(dcap->ev_pcap, dcap_get_fd(dcap), EV_READ,
+	event_set(dcap->_ev_pcap, dcap_get_fd(dcap), EV_READ,
 			dcap_event_cb, dcap);
-	if (event_add(dcap->ev_pcap, ev_tv) < 0) {
+	if (event_add(dcap->_ev_pcap, ev_tv) < 0) {
 		warnx("event_add error");
 		return (-1);
 	}
@@ -266,8 +266,8 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 	}
 
 	dcap = calloc(1, sizeof(struct dcap));
-	dcap->pcap = pcap;
-	dcap->callback = callback;
+	dcap->_pcap = pcap;
+	dcap->_callback = callback;
 	dcap->user = NULL;
 
 	/* Get the netmask. Only used for "ip broadcast" filter expression,
@@ -293,9 +293,9 @@ dcap_init_live(char *intf_name, int promisc, char *filter,
 	}
 
 	dcap = calloc(1, sizeof(struct dcap));
-	dcap->pcap = pcap;
+	dcap->_pcap = pcap;
 	snprintf(dcap->intf_name, sizeof(dcap->intf_name), "%s", intf_name);
-	dcap->callback = callback;
+	dcap->_callback = callback;
 
 	return (dcap);
 }
@@ -328,8 +328,8 @@ dcap_init_file(char *filename, char *filter, dcap_handler callback)
 	}
 	
 	dcap = calloc(1, sizeof(struct dcap));
-	dcap->pcap = pcap;
-	dcap->callback = callback;
+	dcap->_pcap = pcap;
+	dcap->_callback = callback;
 	dcap->user = NULL;
 
 	printf("reading from file %s, filter %s\n", filename, filter);
@@ -340,13 +340,13 @@ dcap_init_file(char *filename, char *filter, dcap_handler callback)
 void
 dcap_loop_all(struct dcap *dcap)
 {
-	pcap_loop(dcap->pcap, -1, dcap_pcap_cb, (u_char *)dcap);
+	pcap_loop(dcap->_pcap, -1, dcap_pcap_cb, (u_char *)dcap);
 }
 
 void
 dcap_close(struct dcap *dcap)
 {
-	pcap_close(dcap->pcap);
+	pcap_close(dcap->_pcap);
 	free(dcap);
 }
 
@@ -360,10 +360,10 @@ dcap_get_stats(struct dcap *dcap)
 	ds.captured = dcap->pkts_captured;
 
 	/* pcap stats not valid for file. */
-	if (pcap_file(dcap->pcap) == NULL) {
+	if (pcap_file(dcap->_pcap) == NULL) {
 		bzero(&ps, sizeof(ps));
-		if (pcap_stats(dcap->pcap, &ps) < 0) {
-			warnx("pcap_stats: %s", pcap_geterr(dcap->pcap));
+		if (pcap_stats(dcap->_pcap, &ps) < 0) {
+			warnx("pcap_stats: %s", pcap_geterr(dcap->_pcap));
 		} else {
 			ds.ps_valid = 1;
 			ds.ps_recv = ps.ps_recv;

@@ -19,12 +19,14 @@
 typedef void (*dcap_handler)(struct timeval *tv, int pkt_len, char *ip_pkt, void *user);
 
 struct dcap {
-	pcap_t		*pcap;
-	char		intf_name[128];
-	dcap_handler	callback;
-	struct event	ev_pcap[1];
-	uint32_t	pkts_captured;
-	void *user;
+	char		intf_name[128];		/* Read-only */
+	uint32_t	pkts_captured;		/* Read-only */
+	void		*user;			/* Read/write */
+
+	/* Private vars */
+	pcap_t		*_pcap;
+	struct event	_ev_pcap[1];
+	dcap_handler	_callback;
 };
 
 struct dcap_stat {

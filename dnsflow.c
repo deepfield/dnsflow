@@ -1144,7 +1144,7 @@ main(int argc, char *argv[])
 		pdump = pcap_dump_open(pc_dump, pcap_file_write);
 		if (pdump == NULL) {
 			errx(1, "%s: %s", pcap_file_write,
-					pcap_geterr(dcap->pcap));
+					pcap_geterr(pc_dump));
 		}
 	}
 
