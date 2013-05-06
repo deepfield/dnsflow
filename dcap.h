@@ -22,7 +22,8 @@ struct dcap {
 	char		intf_name[128];		/* Read-only */
 	uint32_t	pkts_captured;		/* Read-only */
 	void		*user;			/* Read/write */
-	uint16_t	sample_rate;		/* Read/write */
+	uint16_t	sample_rate;		/* Read/write - 0 or 1 to
+						   disable sampling */
 
 	/* Private vars */
 	pcap_t		*_pcap;

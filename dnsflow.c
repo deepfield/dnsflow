@@ -981,8 +981,9 @@ main(int argc, char *argv[])
 	int			encap_offset = 0;
 	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
 	int			is_child = 0;
+	uint16_t		sample_rate;
 
-	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:u:w:X:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:h")) != -1) {
 		switch (c) {
 		case 'i':
 			intf_name = optarg;
@@ -1024,6 +1025,9 @@ main(int argc, char *argv[])
 			break;
 		case 'r':
 			pcap_file_read = optarg;
+			break;
+		case 's':
+			sample_rate = atoi(optarg);
 			break;
 		case 'u':
 			if (udp_num_dsts == DNSFLOW_UDP_MAX_DSTS) {
@@ -1094,7 +1098,7 @@ main(int argc, char *argv[])
 	/* Init pcap */
 	if (pcap_file_read != NULL) {
 		dcap = dcap_init_file(pcap_file_read, filter, dnsflow_dcap_cb);
-		_log("reading from file %s, filter %s\n", pcap_file_read,
+		_log("reading from file %s, filter %s", pcap_file_read,
 				filter);
 
 	} else {
@@ -1116,6 +1120,12 @@ main(int argc, char *argv[])
 	}
 	if (dcap == NULL) {
 		exit(1);
+	}
+
+	/* Sampling */
+	if (sample_rate > 1) {
+		dcap->sample_rate = sample_rate;
+		_log("sample_rate set to %u", sample_rate);
 	}
 
 	/* Even if the flow pkt isn't full, send any buffered data every

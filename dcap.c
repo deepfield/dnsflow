@@ -98,13 +98,20 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	int			length, dl, dloff;
 	char			*p;
 
+	dcap = (struct dcap *) user;
+	pcap = dcap->_pcap;
+
+	if (dcap->sample_rate > 1) {
+		/* Seeding is left to the user. */
+		if (random() % dcap->sample_rate != 0) {
+			return;
+		}
+	}
+
 	if (pkthdr->caplen != pkthdr->len) {
 		warnx("Invalid caplen: %d %d\n", pkthdr->caplen, pkthdr->len);
 		return;
 	}
-
-	dcap = (struct dcap *) user;
-	pcap = dcap->_pcap;
 
 	dl = pcap_datalink(pcap);
 	dloff = datalink_offset(dl);
@@ -120,9 +127,6 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 
 	p = (char *)pkt;
 	length = pkthdr->len;
-
-	p += dloff;
-	length -= dloff;
 
 	if(dl != DLT_NULL 
 #ifdef DLT_LOOP
@@ -140,11 +144,14 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 			length -= 4;
 		}
 
+		/* XXX Why are we only checking for IP if it's ethernet? */
 		if (ether_type != ETHERTYPE_IP) {
 			warnx("Non-ip: ether_type=%d\n", ether_type); 
 			return;
 		}
 	}
+	p += dloff;
+	length -= dloff;
 
 	dcap->pkts_captured++;
 	dcap->_callback((struct timeval *)&pkthdr->ts, length, p, dcap->user);
