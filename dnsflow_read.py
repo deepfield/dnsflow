@@ -138,7 +138,7 @@ def process_pkt(dl_type, ts, buf):
                 err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                 return (pkt, err)
             cp += struct.calcsize(fmt)
-            if vers == 1:
+            if vers == 1 or vers == 2:
                 # Each name is in the form of an uncompressed dns name.
                 # names are root domain (Nul) terminated, and padded with Nuls
                 # on the end to word align. 
