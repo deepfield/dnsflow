@@ -1094,6 +1094,9 @@ main(int argc, char *argv[])
 	/* Init pcap */
 	if (pcap_file_read != NULL) {
 		dcap = dcap_init_file(pcap_file_read, filter, dnsflow_dcap_cb);
+		_log("reading from file %s, filter %s\n", pcap_file_read,
+				filter);
+
 	} else {
 		dcap = dcap_init_live(intf_name, promisc, filter,
 				dnsflow_dcap_cb);

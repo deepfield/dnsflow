@@ -99,8 +99,7 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	char			*p;
 
 	if (pkthdr->caplen != pkthdr->len) {
-		/* XXX better warning */
-		printf("Invalid caplen: %d %d\n", pkthdr->caplen, pkthdr->len);
+		warnx("Invalid caplen: %d %d\n", pkthdr->caplen, pkthdr->len);
 		return;
 	}
 
@@ -110,12 +109,12 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	dl = pcap_datalink(pcap);
 	dloff = datalink_offset(dl);
 	if(dloff == -1) {
-		printf("Unsupported datalink: %d\n", dl);
+		warnx("Unsupported datalink: %d\n", dl);
 		return;
 	}
 
 	if (pkthdr->len < dloff + sizeof(struct ip)) {
-		printf("Invalid packet: length=%d\n", pkthdr->len);
+		warnx("Invalid packet: length=%d\n", pkthdr->len);
 		return;
 	}
 
@@ -133,16 +132,16 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 		eh = (struct ether_header *)p;
 		ether_type = ntohs(eh->ether_type);
 
-		/* Unencapsulate 802.1Q or ISL VLAN frames */
+		/* Unencapsulate 802.1Q VLAN */
+		/* XXX Only supporting 1 level. Just loop for qinq? */
 		if (ether_type == ETHERTYPE_VLAN) {
-			/* XXX - skip length of VLAN tag */
-			p += ETHERTYPE_VLAN;  
-			eh = (struct ether_header *)p;
-			ether_type = ntohs(eh->ether_type);
-		} 
+			ether_type = ntohs(*(uint16_t *)(p + 2));
+			p += 4;
+			length -= 4;
+		}
 
 		if (ether_type != ETHERTYPE_IP) {
-			printf("Non-ip: ether_type=%d\n", ether_type); 
+			warnx("Non-ip: ether_type=%d\n", ether_type); 
 			return;
 		}
 	}
@@ -311,18 +310,18 @@ dcap_init_file(char *filename, char *filter, dcap_handler callback)
 
 	pcap = pcap_open_offline(filename, pcap_errbuf);
 	if (pcap == NULL) {
-		printf("Could not open file %s (%s)\n", filename, pcap_errbuf);
+		warnx("Could not open file %s (%s)\n", filename, pcap_errbuf);
 		return (NULL);
 	}
 
 	if (pcap_compile(pcap, &bpf, filter, 1, 0) < 0) {
-		printf("filter compile failed: %s\n", pcap_geterr(pcap));
+		warnx("filter compile failed: %s\n", pcap_geterr(pcap));
 		pcap_close(pcap);
 		return (NULL);
 	}
 
 	if (pcap_setfilter(pcap, &bpf) < 0) {
-		printf("Pcap setfilter failed: %s\n", pcap_geterr(pcap));
+		warnx("Pcap setfilter failed: %s\n", pcap_geterr(pcap));
 		pcap_close(pcap);
 		return (NULL);
 	}
@@ -331,8 +330,6 @@ dcap_init_file(char *filename, char *filter, dcap_handler callback)
 	dcap->_pcap = pcap;
 	dcap->_callback = callback;
 	dcap->user = NULL;
-
-	printf("reading from file %s, filter %s\n", filename, filter);
 
 	return (dcap);
 }
