@@ -19,13 +19,6 @@ import urllib
 import struct
 import ipaddr
 
-cfg = {
-        'verbosity':    0,
-        'ts_level':     0,    # timestamp level
-        'track_subs':   False,
-        'regex':        None  # stores the compiled regex
-        }
-
 DNSFLOW_FLAG_STATS = 0x0001
 
 #
@@ -78,7 +71,7 @@ def process_pkt(dl_type, ts, buf):
         return (pkt, err)
     cp += struct.calcsize(fmt)
 
-    # Version 0 or 1
+    # Version 0, 1, or 2
     if (vers != 0 and vers != 1 and vers !=2) or sets_count == 0:
         err = 'BAD_PKT|%s' % (src_ip)
         return (pkt, err)
@@ -97,7 +90,6 @@ def process_pkt(dl_type, ts, buf):
         else:
             # vers 0 or 1
             fmt = '!4I'
-
         try:
             stats = struct.unpack(fmt,
                     dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
@@ -187,14 +179,9 @@ def process_pkt(dl_type, ts, buf):
     return (pkt, err)
 
 def print_parsed_pkt(pkt):
-    global cfg
-
     hdr = pkt['header']
     ts = hdr['timestamp']
-    if cfg['ts_level'] >= 2:
-        tstr = time.strftime('%Y%m%d:%H:%M:%S', time.gmtime(ts))
-    else:
-        tstr = time.strftime('%H:%M:%S', time.gmtime(ts))
+    tstr = time.strftime('%H:%M:%S', time.gmtime(ts))
 
     print 'HEADER|%s|%s|%d|%d|%d' % (hdr['src_ip'], tstr,
             hdr['sets_count'], hdr['flags'], hdr['sequence_number'])
@@ -204,13 +191,8 @@ def print_parsed_pkt(pkt):
         print "STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1])
             for x in stats.items()]))
     else:
-        if cfg['ts_level'] >= 1:
-            data_ts = '%s|' % (tstr)
-        else:
-            data_ts = ''
-        
         for data in pkt['data']:
-            print 'DATA|%s|%s%s|%s' % (data['client_ip'], data_ts,
+            print 'DATA|%s|%s|%s|%s' % (data['client_ip'], tstr,
                     ','.join(data['names']), ','.join(data['ips']))
 
                 
@@ -260,46 +242,74 @@ def mode_livecapture(interface, pcap_filter, callback):
         print '%d packets received, %d packets dropped, %d packets dropped by interface' % p.stats()
    
 
-def main(argv):
-    global cfg
+class reader(object):
+    # --------- Version 2. Iterator.
+    def __init__(self, pcap_file):
+        self.pcap = None
+        self.pcap_file = pcap_file
 
+        # XXX dpkt pcap doesn't support filters and there's no way to pass
+        # a gzip fd to pylibpcap. Bummer.
+        p = pcap.pcapObject()
+        p.open_offline(pcap_file)
+        pcap_filter = 'udp and dst port 5300'
+        # filter, optimize, netmask
+        p.setfilter(pcap_filter, 1, 0)
+        self.pcap = p
+
+    # Return individual dnsflow records (multiple per packet).
+    def dnsflow_iter(self):
+        for pkt in self.dnsflow_pkt_iter():
+            ts = pkt['header']['timestamp']
+            if 'data' not in pkt:
+                # stats pkt
+                continue
+            for record in pkt['data']:
+                yield ts, record
+
+    # Iterator that skips non-dnsflow packets.
+    def dnsflow_pkt_iter(self):
+        if self.pcap is None:
+            return  # End iteration.
+        while 1:
+            rv = self.pcap.next()
+            if rv == None:
+                break
+            pktlen, buf, ts = rv
+            pkt, err = process_pkt(self.pcap.datalink(), ts, buf)
+            if err is not None:
+                print err
+                continue
+            yield pkt
+
+
+def main(argv):
     usage = ('Usage: %s [-sStv] ' % (argv[0]) +
         '[-f filter] [-F filter] [-x regex] -r pcap_file or -i interface')
 
     try:
-        opts, args = getopt.getopt(argv[1:], 'f:F:i:r:sStvx:')
+        opts, args = getopt.getopt(argv[1:], 'f:F:i:r:')
     except getopt.GetoptError:
         print >>sys.stderr, usage
         return 1
 
     pcap_files = []
     interface = None
-    print_summary = False
 
     base_filter = 'udp and dst port 5300'
     pcap_filter = base_filter
     
     for o, a in opts:
-        if o == '-v':
-            cfg['verbosity'] += 1
-        elif o == '-t':
-            cfg['ts_level'] += 1
-        elif o == '-r':
-            pcap_files.append(a)
-        elif o == '-i':
-            interface = a
-        elif o == '-s':
-            print_summary = True
-        elif o == '-S':
-            cfg['track_subs'] = True
-        elif o == '-f':
+        if o == '-f':
             # extra filter
             pcap_filter = '(%s) and (%s)' % (base_filter, a)
         elif o == '-F':
             # complete filter
             pcap_filter = a
-        elif o == '-x':
-            cfg['regex'] = re.compile(a)
+        elif o == '-r':
+            pcap_files.append(a)
+        elif o == '-i':
+            interface = a
 
     pcap_files.extend(args)
 
