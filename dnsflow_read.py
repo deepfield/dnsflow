@@ -79,7 +79,7 @@ def process_pkt(dl_type, ts, buf):
     cp += struct.calcsize(fmt)
 
     # Version 0 or 1
-    if (vers != 0 and vers != 1) or sets_count == 0:
+    if (vers != 0 and vers != 1 and vers !=2) or sets_count == 0:
         err = 'BAD_PKT|%s' % (src_ip)
         return (pkt, err)
    
@@ -92,7 +92,12 @@ def process_pkt(dl_type, ts, buf):
     pkt['header'] = hdr
     
     if flags & DNSFLOW_FLAG_STATS:
-        fmt = '!4I'
+        if vers == 2:
+            fmt = '!5I'
+        else:
+            # vers 0 or 1
+            fmt = '!4I'
+
         try:
             stats = struct.unpack(fmt,
                     dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
@@ -104,6 +109,8 @@ def process_pkt(dl_type, ts, buf):
         sp['pkts_received'] = stats[1]
         sp['pkts_dropped'] = stats[2]
         sp['pkts_ifdropped'] = stats[3]
+        if vers == 2:
+            sp['sample_rate'] = stats[4]
         pkt['stats'] = sp
 
     else:
@@ -194,7 +201,8 @@ def print_parsed_pkt(pkt):
 
     if 'stats' in pkt:
         stats = pkt['stats']
-        print "STATS|%s" % ('|'.join([str(x) for x in stats.values()]))
+        print "STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1])
+            for x in stats.items()]))
     else:
         if cfg['ts_level'] >= 1:
             data_ts = '%s|' % (tstr)

@@ -52,6 +52,7 @@
       pkts_received	[4 bytes]
       pkts_dropped	[4 bytes]
       pkts_ifdropped	[4 bytes] Only supported on some platforms.
+      sample_rate	[4 bytes]
  */
 #include <sys/file.h>
 #include <sys/types.h>
@@ -100,7 +101,7 @@
 #define DNSFLOW_MAX_PARSE		255
 #define DNSFLOW_PKT_MAX_SIZE		65535
 #define DNSFLOW_PKT_TARGET_SIZE		1200
-#define DNSFLOW_VERSION			1
+#define DNSFLOW_VERSION			2
 #define DNSFLOW_PORT			5300
 #define DNSFLOW_UDP_MAX_DSTS		10
 
@@ -142,6 +143,7 @@ struct dnsflow_stats_pkt {
 	uint32_t	pkts_dropped;
 	uint32_t	pkts_ifdropped; /* according to pcap, only supported
 					   on some platforms */
+	uint32_t	sample_rate;
 };
 
 enum dnsflow_buf_type {
@@ -911,6 +913,7 @@ dnsflow_stats_cb(int fd, short event, void *arg)
 	buf.db_stats_pkt.pkts_received = htonl(ds->ps_recv);
 	buf.db_stats_pkt.pkts_dropped = htonl(ds->ps_drop);
 	buf.db_stats_pkt.pkts_ifdropped = htonl(ds->ps_ifdrop);
+	buf.db_stats_pkt.sample_rate = htonl(dcap->sample_rate);
 
 	dnsflow_pkt_send(&buf);
 }
