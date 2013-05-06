@@ -984,7 +984,7 @@ main(int argc, char *argv[])
 	int			encap_offset = 0;
 	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
 	int			is_child = 0;
-	uint16_t		sample_rate;
+	uint16_t		sample_rate = 0;
 
 	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:h")) != -1) {
 		switch (c) {
