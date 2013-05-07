@@ -1,34 +1,33 @@
-This is DNSFlow - 
-Lightweight DNS telemetry
+# DNSFlow &mdash; Lightweight DNS telemetry
 
-# Quick start
- * [Download the latest release](https://github.com/deepfield/dnsflow/archive/master.tar.gz).
+## Quick start
+ * [Download the latest release](https://github.com/deepfield/dnsflow/archive/master.tar.gz)
  * Install Dependencies
  * Build dnsflow
 
-# Building
+## Building
 ```
 cd dnsflow
 make
 make install  # optional
 ```
 
-# Dependencies
+## Dependencies
 
-## Ubuntu/Debian install
+### Ubuntu/Debian Install
 ```
 sudo apt-get install build-essential libpcap-dev libevent-dev libldns-dev
 ```
 
-## Manual Install
+### Manual Install
 You may need to install the dependencies for your distribution manually.
 
-For redhat, you may have to install flex/bison first (for pcap):
+For RedHat, you may have to install flex/bison first (for pcap):
 ```
 yum install flex bison
 ```
 
-### ldns
+#### ldns
 
 ```
 curl -O http://nlnetlabs.nl/downloads/ldns/ldns-1.6.16.tar.gz
@@ -38,7 +37,7 @@ cd ldns-1.6.16
 make; make install; ldconfig
 ```
 
-### libpcap
+#### libpcap
 
 ```
 curl -O http://www.tcpdump.org/release/libpcap-1.3.0.tar.gz
@@ -48,7 +47,7 @@ cd libpcap-1.3.0
 make; make install; ldconfig
 ```
 
-### libevent
+#### libevent
 ```
 curl -L -O https://github.com/downloads/libevent/libevent/libevent-2.0.21-stable.tar.gz
 tar xf libevent-2.0.21-stable.tar.gz
@@ -57,15 +56,8 @@ cd libevent-2.0.21-stable
 make; make install; ldconfig
 ```
 
-# Dependency Links
+## Dependency Links
 
-ldns
-http://nlnetlabs.nl/projects/ldns/
-
-libevent
-http://monkey.org/~provos/libevent/
-
-pcap
-http://www.tcpdump.org/
-
-
+- [ldns](http://nlnetlabs.nl/projects/ldns/)
+- [libevent](http://monkey.org/~provos/libevent/)
+- [pcap](http://www.tcpdump.org/)
