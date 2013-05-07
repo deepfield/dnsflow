@@ -65,7 +65,7 @@ class reader(object):
     # Iterate over individual dnsflow records (multiple per packet).
     # Skips stats pkts.
     def flow_iter(self):
-        for pkt in self.dnsflow_pkt_iter():
+        for pkt in self.pkt_iter():
             ts = pkt['header']['timestamp']
             if 'data' not in pkt:
                 # stats pkt
