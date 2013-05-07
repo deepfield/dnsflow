@@ -20,6 +20,76 @@ import struct
 import ipaddr
 
 DNSFLOW_FLAG_STATS = 0x0001
+DEFAULT_PCAP_FILTER = 'udp and dst port 5300'
+
+# Utility functions to simplify interface.
+# E.g.
+# for dflow in deepy.dnsflow_read.flow_iter(interface='eth0'):
+#     print dflow
+# for dflow in deepy.dnsflow_read.flow_iter(pcap_file='dnsflow.pcap'):
+#     print dflow
+def flow_iter(**kwargs):
+    rdr = reader(**kwargs)
+    return rdr.flow_iter()
+def pkt_iter(**kwargs):
+    rdr = reader(**kwargs)
+    return rdr.pkt_iter()
+
+# Top-level interface for reading/capturing dnsflow. Instantiate object,
+# then iterate using flow_iter() or pkt_iter().
+class reader(object):
+    def __init__(self, interface=None, pcap_file=None,
+            pcap_filter=DEFAULT_PCAP_FILTER):
+        if interface is None and pcap_file is None:
+            raise Exception('Specify interface or pcap_file')
+        if interface is not None and pcap_file is not None:
+            raise Exception('Specify only interface or pcap_file')
+
+        self.interface = interface
+        self.pcap_file = pcap_file
+        self.pcap_filter = pcap_filter
+
+        self._pcap = pcap.pcapObject()
+
+        if self.pcap_file is not None:
+            # XXX dpkt pcap doesn't support filters and there's no way to pass
+            # a gzip fd to pylibpcap. Bummer.
+            self._pcap.open_offline(pcap_file)
+        else:
+            # Interface
+            # device, snaplen, promisc, to_ms
+            self._pcap.open_live(interface, 65535, 1, 100)
+        # filter, optimize, netmask
+        self._pcap.setfilter(self.pcap_filter, 1, 0)
+
+    # Iterate over individual dnsflow records (multiple per packet).
+    # Skips stats pkts.
+    def flow_iter(self):
+        for pkt in self.dnsflow_pkt_iter():
+            ts = pkt['header']['timestamp']
+            if 'data' not in pkt:
+                # stats pkt
+                continue
+            for record in pkt['data']:
+                yield ts, record
+
+    # Iterate over dnsflow pkts.
+    def pkt_iter(self):
+        while 1:
+            rv = self._pcap.next()
+            if rv == None:
+                if self.pcap_file is not None:
+                    # eof
+                    break
+                else:
+                    # interface, hit to_ms
+                    continue
+            pktlen, buf, ts = rv
+            pkt, err = process_pkt(self._pcap.datalink(), ts, buf)
+            if err is not None:
+                print err
+                continue
+            yield pkt
 
 #
 # Returns a tuple(pkt_contents, error_string).
@@ -178,24 +248,7 @@ def process_pkt(dl_type, ts, buf):
 
     return (pkt, err)
 
-def print_parsed_pkt(pkt):
-    hdr = pkt['header']
-    ts = hdr['timestamp']
-    tstr = time.strftime('%H:%M:%S', time.gmtime(ts))
-
-    print 'HEADER|%s|%s|%d|%d|%d' % (hdr['src_ip'], tstr,
-            hdr['sets_count'], hdr['flags'], hdr['sequence_number'])
-
-    if 'stats' in pkt:
-        stats = pkt['stats']
-        print "STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1])
-            for x in stats.items()]))
-    else:
-        for data in pkt['data']:
-            print 'DATA|%s|%s|%s|%s' % (data['client_ip'], tstr,
-                    ','.join(data['names']), ','.join(data['ips']))
-
-                
+# Deprecated.
 def read_pcapfiles(pcap_files, pcap_filter, callback):
     for pcap_file in pcap_files:
         print 'FILE|%s' % (pcap_file)
@@ -219,6 +272,7 @@ def read_pcapfiles(pcap_files, pcap_filter, callback):
                 continue
             callback(pkt)
 
+# Deprecated.
 def mode_livecapture(interface, pcap_filter, callback):
     print 'Capturing on', interface
     p = pcap.pcapObject()
@@ -240,86 +294,68 @@ def mode_livecapture(interface, pcap_filter, callback):
     except KeyboardInterrupt:
         print '\nshutting down'
         print '%d packets received, %d packets dropped, %d packets dropped by interface' % p.stats()
-   
 
-class reader(object):
-    # --------- Version 2. Iterator.
-    def __init__(self, pcap_file):
-        self.pcap = None
-        self.pcap_file = pcap_file
+def _print_parsed_pkt(pkt):
+    hdr = pkt['header']
+    ts = hdr['timestamp']
+    tstr = time.strftime('%H:%M:%S', time.gmtime(ts))
 
-        # XXX dpkt pcap doesn't support filters and there's no way to pass
-        # a gzip fd to pylibpcap. Bummer.
-        p = pcap.pcapObject()
-        p.open_offline(pcap_file)
-        pcap_filter = 'udp and dst port 5300'
-        # filter, optimize, netmask
-        p.setfilter(pcap_filter, 1, 0)
-        self.pcap = p
+    print 'HEADER|%s|%s|%d|%d|%d' % (hdr['src_ip'], tstr,
+            hdr['sets_count'], hdr['flags'], hdr['sequence_number'])
 
-    # Return individual dnsflow records (multiple per packet).
-    def dnsflow_iter(self):
-        for pkt in self.dnsflow_pkt_iter():
-            ts = pkt['header']['timestamp']
-            if 'data' not in pkt:
-                # stats pkt
-                continue
-            for record in pkt['data']:
-                yield ts, record
-
-    # Iterator that skips non-dnsflow packets.
-    def dnsflow_pkt_iter(self):
-        if self.pcap is None:
-            return  # End iteration.
-        while 1:
-            rv = self.pcap.next()
-            if rv == None:
-                break
-            pktlen, buf, ts = rv
-            pkt, err = process_pkt(self.pcap.datalink(), ts, buf)
-            if err is not None:
-                print err
-                continue
-            yield pkt
+    if 'stats' in pkt:
+        stats = pkt['stats']
+        print "STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1])
+            for x in stats.items()]))
+    else:
+        for data in pkt['data']:
+            print 'DATA|%s|%s|%s|%s' % (data['client_ip'], tstr,
+                    ','.join(data['names']), ','.join(data['ips']))
 
 
 def main(argv):
-    usage = ('Usage: %s [-sStv] ' % (argv[0]) +
-        '[-f filter] [-F filter] [-x regex] -r pcap_file or -i interface')
+    usage = ('Usage: %s [-s] ' % (argv[0]) +
+        '[-f filter] [-F filter] -r pcap_file or -i interface')
 
     try:
-        opts, args = getopt.getopt(argv[1:], 'f:F:i:r:')
+        opts, args = getopt.getopt(argv[1:], 'f:F:i:r:s')
     except getopt.GetoptError:
         print >>sys.stderr, usage
         return 1
 
-    pcap_files = []
+    pcap_file = None
     interface = None
+    stats_only = False
 
-    base_filter = 'udp and dst port 5300'
-    pcap_filter = base_filter
+    pcap_filter = DEFAULT_PCAP_FILTER
     
     for o, a in opts:
         if o == '-f':
             # extra filter
-            pcap_filter = '(%s) and (%s)' % (base_filter, a)
+            pcap_filter = '(%s) and (%s)' % (DEFAULT_PCAP_FILTER, a)
         elif o == '-F':
             # complete filter
             pcap_filter = a
         elif o == '-r':
-            pcap_files.append(a)
+            pcap_file = a
         elif o == '-i':
             interface = a
+        elif o == '-s':
+            stats_only = True
 
-    pcap_files.extend(args)
-
-    if len(pcap_files) > 0:
-        read_pcapfiles(pcap_files, pcap_filter, print_parsed_pkt)
-    elif interface is not None:
-        mode_livecapture(interface, pcap_filter, print_parsed_pkt)
-    else:
+    if pcap_file is None and interface is None:
         print usage
         sys.exit(1)
+
+    if pcap_file is not None:
+        diter = pkt_iter(pcap_file=pcap_file, pcap_filter=pcap_filter)
+    else:
+        diter = pkt_iter(interface=interface, pcap_filter=pcap_filter)
+
+    for pkt in diter:
+        if stats_only and 'stats' not in pkt:
+            continue
+        _print_parsed_pkt(pkt)
 
 if __name__ == '__main__':
     main(sys.argv)
