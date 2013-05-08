@@ -135,6 +135,8 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 	{
 		eh = (struct ether_header *)p;
 		ether_type = ntohs(eh->ether_type);
+		p += dloff;
+		length -= dloff;
 
 		/* Unencapsulate 802.1Q VLAN */
 		/* XXX Only supporting 1 level. Just loop for qinq? */
@@ -149,9 +151,10 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 			warnx("Non-ip: ether_type=%d\n", ether_type); 
 			return;
 		}
+	} else {
+		p += dloff;
+		length -= dloff;
 	}
-	p += dloff;
-	length -= dloff;
 
 	dcap->pkts_captured++;
 	dcap->_callback((struct timeval *)&pkthdr->ts, length, p, dcap->user);
