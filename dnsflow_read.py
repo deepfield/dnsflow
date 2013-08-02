@@ -4,7 +4,7 @@
 See dnsflow.c header comment for packet formats.
 '''
 
-import os, sys, time, json, pprint, getopt, signal, re
+import os, sys, time, json, pprint, argparse, signal, re
 import traceback, tempfile, stat
 import urllib2
 import socket
@@ -113,11 +113,13 @@ def process_pkt(dl_type, ts, buf):
             dnsflow_pkt = lo.data
             ip_pkt = None
             src_ip = '0.0.0.0'
+            src_port = 0
         elif lo.family == socket.AF_INET:
             # dl, ip, udp, dnsflow_pkt
             dnsflow_pkt = lo.data.data.data
             ip_pkt = lo.data
             src_ip = socket.inet_ntop(socket.AF_INET, ip_pkt.src)
+            src_port = ip_pkt.data.sport
     elif dl_type == dpkt.pcap.DLT_EN10MB:
         # Ethernet
         try:
@@ -128,6 +130,7 @@ def process_pkt(dl_type, ts, buf):
         dnsflow_pkt = eth.data.data.data
         ip_pkt = eth.data
         src_ip = socket.inet_ntop(socket.AF_INET, ip_pkt.src)
+        src_port = ip_pkt.data.sport
 
     cp = 0
 
@@ -148,6 +151,7 @@ def process_pkt(dl_type, ts, buf):
    
     hdr = {}
     hdr['src_ip'] = src_ip
+    hdr['src_port'] = src_port
     hdr['timestamp'] = ts
     hdr['sets_count'] = sets_count
     hdr['flags'] = flags
@@ -300,7 +304,7 @@ def _print_parsed_pkt(pkt):
     ts = hdr['timestamp']
     tstr = time.strftime('%H:%M:%S', time.gmtime(ts))
 
-    print 'HEADER|%s|%s|%d|%d|%d' % (hdr['src_ip'], tstr,
+    print 'HEADER|%s:%d|%s|%d|%d|%d' % (hdr['src_ip'], hdr['src_port'], tstr,
             hdr['sets_count'], hdr['flags'], hdr['sequence_number'])
 
     if 'stats' in pkt:
@@ -313,49 +317,113 @@ def _print_parsed_pkt(pkt):
                     ','.join(data['names']), ','.join(data['ips']))
 
 
+class SrcTracker(object):
+    def __init__(self):
+        self.srcs = {}
+
+    def update(self, pkt):
+        hdr = pkt['header']
+        src_id = (hdr['src_ip'], hdr['src_port'])
+        src = self.srcs.get(src_id)
+        if src is None:
+            src = {
+                    'n_records': 0,
+                    'n_data_pkts': 0,
+                    'n_stats_pkts': 0,
+                    'first_timestamp': hdr['timestamp']
+                    }
+            self.srcs[src_id] = src
+        src['last_timestamp'] = hdr['timestamp']
+        if 'stats' in pkt:
+            src['n_stats_pkts'] += 1
+            if 'stats_last' not in src:
+                # First stats for src
+                src['stats_last'] = pkt['stats']
+                src['stats_delta_last'] = {}
+                src['stats_delta_total'] = {}
+                for k in pkt['stats'].iterkeys():
+                    if k == 'sample_rate':
+                        continue
+                    src['stats_delta_total'][k] = 0
+            for k in pkt['stats'].iterkeys():
+                if k == 'sample_rate':
+                    continue
+                src['stats_delta_last'][k] = pkt['stats'][k] - src['stats_last'][k]
+                src['stats_delta_total'][k] += src['stats_delta_last'][k]
+            src['stats_last'] = pkt['stats']
+        else:
+            src['n_data_pkts'] += 1
+            src['n_records'] += hdr['sets_count']
+        return src_id
+
+    def print_summary_src(self, src_id):
+        src = self.srcs[src_id]
+        ts_delta = src['last_timestamp'] - src['first_timestamp']
+        print '%s:%s' % (src_id[0], src_id[1])
+        print '  %s' % (' '.join(['%s=%d' % (k, src[k])
+            for k in ['n_data_pkts', 'n_records', 'n_stats_pkts']]))
+        if ts_delta > 0:
+            print '  %s' % (' '.join(['%s/s=%.2f' % (k, src[k]/ts_delta)
+                for k in ['n_data_pkts', 'n_records', 'n_stats_pkts']]))
+        if 'stats_delta_total' in src:
+            print '  %s' % (' '.join(['%s=%d' % (x[0], x[1])
+                for x in src['stats_delta_total'].items()]))
+            if ts_delta > 0:
+                print '  %s' % (' '.join(['%s/s=%.2f' %
+                    (x[0], x[1]/ts_delta)
+                    for x in src['stats_delta_total'].items()]))
+    def print_summary(self):
+        for src_id in self.srcs.iterkeys():
+            self.print_summary_src(src_id)
+
+def parse_args():
+    p = argparse.ArgumentParser()
+    p.add_argument('-f', dest='extra_filter')
+    p.add_argument('-F', dest='complete_filter')
+    p.add_argument('-s', dest='stats_only', action='store_true')
+    input_group = p.add_mutually_exclusive_group(required=True)
+    input_group.add_argument('-r', dest='pcap_file')
+    input_group.add_argument('-i', dest='interface')
+    args = p.parse_args()
+
+    return args
+
 def main(argv):
     usage = ('Usage: %s [-s] ' % (argv[0]) +
         '[-f filter] [-F filter] -r pcap_file or -i interface')
+    args = parse_args()
 
-    try:
-        opts, args = getopt.getopt(argv[1:], 'f:F:i:r:s')
-    except getopt.GetoptError:
-        print >>sys.stderr, usage
-        return 1
-
-    pcap_file = None
-    interface = None
     stats_only = False
 
     pcap_filter = DEFAULT_PCAP_FILTER
+    if args.extra_filter:
+        pcap_filter = '(%s) and (%s)' % (DEFAULT_PCAP_FILTER, args.extra_filter)
+    elif args.complete_filter:
+        pcap_filter = args.complete_filter
     
-    for o, a in opts:
-        if o == '-f':
-            # extra filter
-            pcap_filter = '(%s) and (%s)' % (DEFAULT_PCAP_FILTER, a)
-        elif o == '-F':
-            # complete filter
-            pcap_filter = a
-        elif o == '-r':
-            pcap_file = a
-        elif o == '-i':
-            interface = a
-        elif o == '-s':
-            stats_only = True
-
-    if pcap_file is None and interface is None:
-        print usage
-        sys.exit(1)
-
-    if pcap_file is not None:
-        diter = pkt_iter(pcap_file=pcap_file, pcap_filter=pcap_filter)
+    if args.pcap_file:
+        diter = pkt_iter(pcap_file=args.pcap_file, pcap_filter=pcap_filter)
     else:
-        diter = pkt_iter(interface=interface, pcap_filter=pcap_filter)
+        diter = pkt_iter(interface=args.interface, pcap_filter=pcap_filter)
 
-    for pkt in diter:
-        if stats_only and 'stats' not in pkt:
-            continue
-        _print_parsed_pkt(pkt)
+    srcs = SrcTracker()
+    try:
+        for pkt in diter:
+            src_id = srcs.update(pkt)
+            if args.stats_only:
+                if 'stats' in pkt:
+                    _print_parsed_pkt(pkt)
+                    # XXX This is just printing the total so far, not since
+                    # the last stats pkt.
+                    srcs.print_summary_src(src_id)
+            else:
+                _print_parsed_pkt(pkt)
+    except KeyboardInterrupt:
+        print '\nSummary:'
+        srcs.print_summary()
+    else:
+        print '\nSummary:'
+        srcs.print_summary()
 
 if __name__ == '__main__':
     main(sys.argv)
