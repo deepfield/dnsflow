@@ -24,9 +24,9 @@ DEFAULT_PCAP_FILTER = 'udp and dst port 5300'
 
 # Utility functions to simplify interface.
 # E.g.
-# for dflow in deepy.dnsflow_read.flow_iter(interface='eth0'):
+# for dflow in flow_iter(interface='eth0'):
 #     print dflow
-# for dflow in deepy.dnsflow_read.flow_iter(pcap_file='dnsflow.pcap'):
+# for dflow in flow_iter(pcap_file='dnsflow.pcap'):
 #     print dflow
 def flow_iter(**kwargs):
     rdr = reader(**kwargs)
@@ -39,7 +39,7 @@ def pkt_iter(**kwargs):
 # then iterate using flow_iter() or pkt_iter().
 class reader(object):
     def __init__(self, interface=None, pcap_file=None,
-            pcap_filter=DEFAULT_PCAP_FILTER):
+            pcap_filter=DEFAULT_PCAP_FILTER, stats_only=False):
         if interface is None and pcap_file is None:
             raise Exception('Specify interface or pcap_file')
         if interface is not None and pcap_file is not None:
@@ -48,6 +48,7 @@ class reader(object):
         self.interface = interface
         self.pcap_file = pcap_file
         self.pcap_filter = pcap_filter
+        self.stats_only = stats_only
 
         self._pcap = pcap.pcapObject()
 
@@ -85,7 +86,8 @@ class reader(object):
                     # interface, hit to_ms
                     continue
             pktlen, buf, ts = rv
-            pkt, err = process_pkt(self._pcap.datalink(), ts, buf)
+            pkt, err = process_pkt(self._pcap.datalink(), ts, buf,
+                    stats_only=self.stats_only)
             if err is not None:
                 print err
                 continue
@@ -97,7 +99,8 @@ class reader(object):
 # describing the error.
 # pkt_contents is a dict containing the unmarshaled data from the packet. It
 # may be incomplete or empty on error.
-def process_pkt(dl_type, ts, buf):
+# stats_only - set to True to parse stats pkts and headers only of data pkts.
+def process_pkt(dl_type, ts, buf, stats_only=False):
     pkt = {}
     err = None
 
@@ -179,7 +182,7 @@ def process_pkt(dl_type, ts, buf):
             sp['sample_rate'] = stats[4]
         pkt['stats'] = sp
 
-    else:
+    elif not stats_only:
         # data pkt
         pkt['data'] = []
         for i in range(sets_count):
@@ -393,8 +396,6 @@ def main(argv):
         '[-f filter] [-F filter] -r pcap_file or -i interface')
     args = parse_args()
 
-    stats_only = False
-
     pcap_filter = DEFAULT_PCAP_FILTER
     if args.extra_filter:
         pcap_filter = '(%s) and (%s)' % (DEFAULT_PCAP_FILTER, args.extra_filter)
@@ -402,9 +403,11 @@ def main(argv):
         pcap_filter = args.complete_filter
     
     if args.pcap_file:
-        diter = pkt_iter(pcap_file=args.pcap_file, pcap_filter=pcap_filter)
+        diter = pkt_iter(pcap_file=args.pcap_file, pcap_filter=pcap_filter,
+                stats_only=args.stats_only)
     else:
-        diter = pkt_iter(interface=args.interface, pcap_filter=pcap_filter)
+        diter = pkt_iter(interface=args.interface, pcap_filter=pcap_filter,
+                stats_only=args.stats_only)
 
     srcs = SrcTracker()
     try:
