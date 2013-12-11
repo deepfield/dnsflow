@@ -3,7 +3,19 @@
 ## Quick start
  * [Download the latest release](https://github.com/deepfield/dnsflow/archive/master.tar.gz)
  * Install Dependencies
- * Build dnsflow
+ * [Build DNSFlow][Building]
+ * [Running][Running]
+
+# Running 
+After you get it built, start the daemon that will forward the DNS (to the localhost in this case):
+```
+dnsflow -i eth0 -u 127.0.0.1 -P /tmp/dnsflow.pid
+```
+
+Read the packets being sent to the local host:
+```
+./dnsflow_read.py -i eth0
+```
 
 ## Building
 ```
