@@ -3,8 +3,8 @@
 ## Quick start
  * [Download the latest release](https://github.com/deepfield/dnsflow/archive/master.tar.gz)
  * Install Dependencies
- * [Build DNSFlow][Building]
- * [Running][Running]
+ * [Build DNSFlow](#building)
+ * [Running](#running)
 
 # Running 
 After you get it built, start the daemon that will forward the DNS (to the localhost in this case):
