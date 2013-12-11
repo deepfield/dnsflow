@@ -9,7 +9,7 @@
 ## Running 
 After you get it built, start the daemon that will forward the DNS (to the localhost in this case):
 ```
-dnsflow -i eth0 -u 127.0.0.1 -P /tmp/dnsflow.pid
+./dnsflow -i eth0 -u 127.0.0.1 -P /tmp/dnsflow.pid
 ```
 
 Read the packets being sent to the local host:
