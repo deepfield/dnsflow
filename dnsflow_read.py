@@ -4,18 +4,9 @@
 See dnsflow.c header comment for packet formats.
 '''
 
-import os, sys, time, json, pprint, argparse, signal, re
-import traceback, tempfile, stat
-import urllib2
+import sys, time, argparse
 import socket
-import gzip
 import dpkt, pcap
-import dns, dns.message
-import json
-import commands
-import subprocess
-import random
-import urllib
 import struct
 import ipaddr
 
