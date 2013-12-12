@@ -3,7 +3,7 @@
 ## Quick start
  * [Download the latest release](https://github.com/deepfield/dnsflow/archive/master.tar.gz)
  * [Install Dependencies](#dependencies)
- * [Install Reader Dependencies](#install dnsflow reader dependencies)
+ * [Install Reader Dependencies](#install-dnsflow-reader-dependencies)
  * [Build DNSFlow](#building dnsflow daemon)
  * [Running](#running)
 
