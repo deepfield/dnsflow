@@ -19,7 +19,7 @@ Read the packets being sent to the local host:
 ```
 
 ## Install DNSFlow Reader Dependencies
-The dnsflow reader is python module that has a few dependencies.
+The dnsflow reader is python script that has a few dependencies.
 
 Install python pip modules.
 ```
