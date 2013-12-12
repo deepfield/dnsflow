@@ -3,7 +3,8 @@
 ## Quick start
  * [Download the latest release](https://github.com/deepfield/dnsflow/archive/master.tar.gz)
  * [Install Dependencies](#dependencies)
- * [Build DNSFlow](#building)
+ * [Install Reader Dependencies](#install dnsflow reader dependencies)
+ * [Build DNSFlow](#building dnsflow daemon)
  * [Running](#running)
 
 ## Running 
@@ -17,7 +18,22 @@ Read the packets being sent to the local host:
 ./dnsflow_read.py -i eth0
 ```
 
-## Building
+## Install DNSFlow Reader Dependencies
+The dnsflow reader is python module that has a few dependencies.
+
+Install python pip modules.
+```
+sudo pip install dpkt ipaddr
+```
+
+Download [python-libpcap](http://sourceforge.net/projects/pylibpcap/files/pylibpcap/0.6.4).
+```
+tar xvfz pylibpcap-0.6.4.tar.gz
+cd pylibpcap-0.6.4
+sudo python ./setup.py install
+```
+
+## Building DNSFlow daemon
 ```
 cd dnsflow
 make

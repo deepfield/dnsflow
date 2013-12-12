@@ -383,8 +383,6 @@ def parse_args():
     return args
 
 def main(argv):
-    usage = ('Usage: %s [-s] ' % (argv[0]) +
-        '[-f filter] [-F filter] -r pcap_file or -i interface')
     args = parse_args()
 
     pcap_filter = DEFAULT_PCAP_FILTER
