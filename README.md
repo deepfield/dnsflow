@@ -15,13 +15,18 @@ After you get it built, start the daemon that will forward the DNS (to the local
 
 Read the packets being sent to the local host:
 ```
-./dnsflow_read.py -i eth0
+./dnsflow_read.py -i lo
 ```
 
 ## Install DNSFlow Reader Dependencies
-The dnsflow reader is python script that has a few dependencies.
+The dnsflow reader is a python script with the following dependencies:
 
-Install python pip modules.
+Install the python package installer pip (via apt on ubuntu).
+```
+sudo apt-get install python-pip
+```
+
+Install python pip modules for dpkt and ipaddr.
 ```
 sudo pip install dpkt ipaddr
 ```
