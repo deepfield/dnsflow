@@ -13,6 +13,11 @@ After you get it built, start the daemon that will forward the DNS (to the local
 ./dnsflow -i eth0 -u 127.0.0.1 -P /tmp/dnsflow.pid
 ```
 
+The daemon can also run in multi-process mode to take advantage of multiple cores. Use the -M option. In this case, dnsflow will run as 4 processes.
+```
+./dnsflow -i eth0 -u 127.0.0.1 -P /tmp/dnsflow.pid -M 4
+```
+
 Read the packets being sent to the local host:
 ```
 ./dnsflow_read.py -i lo
