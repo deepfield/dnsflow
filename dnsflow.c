@@ -960,7 +960,8 @@ usage(void)
 
 	fprintf(stderr, "Usage: %s [-hp] [-i interface] [-r pcap_file] "
 			"[-f filter_expression]\n", __progname);
-	fprintf(stderr, "\t[-P pidfile]  [-m proc_i/n_procs] [-M n_procs]\n");
+	fprintf(stderr, "\t[-P pidfile]  [-m proc_i/n_procs] [-M n_procs] "
+			"[-s sample_rate]\n");
 	/* Encap options */
 	fprintf(stderr, "\t[-X pcap_record_recv_port] "
 			"[-J jmirror_port (usually 30030)]\n");

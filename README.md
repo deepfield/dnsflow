@@ -18,6 +18,11 @@ The daemon can also run in multi-process mode to take advantage of multiple core
 ./dnsflow -i eth0 -u 127.0.0.1 -P /tmp/dnsflow.pid -M 4
 ```
 
+Use the -s option to randomly sample 1 out of N DNS packets. For highest accuracy, use this as a last resort, and keep the rate as low as possible. For example, to sample 1 out of 2 (50%).
+```
+./dnsflow -i eth0 -u 127.0.0.1 -P /tmp/dnsflow.pid -M 4 -s 2
+```
+
 Read the packets being sent to the local host:
 ```
 ./dnsflow_read.py -i lo
