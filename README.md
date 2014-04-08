@@ -6,6 +6,7 @@
  * [Install Reader Dependencies](#install-dnsflow-reader-dependencies)
  * [Build DNSFlow](#building-dnsflow-daemon)
  * [Running](#running)
+ * [Running as an Upstart job](#running-as-an-upstart-job)
 
 ## Running 
 After you get it built, start the daemon that will forward the DNS (to the localhost in this case):
@@ -26,6 +27,29 @@ Use the -s option to randomly sample 1 out of N DNS packets. For highest accurac
 Read the packets being sent to the local host:
 ```
 ./dnsflow_read.py -i lo
+```
+
+## Running as an Upstart job
+Running as an Upstart job requires DNSFlow to be installed on a Ubuntu/Debian deployment. These commands should be run with root priviledges.
+
+Starting DNSFlow.
+```
+service dnsflow start
+```
+
+Stopping DNSFlow.
+```
+service dnsflow stop
+```
+
+Restarting DNSFlow.
+```
+service dnsflow restart
+```
+
+Command line options, pid file location, and DNSFlow binary location can be specified in the following location:
+```
+/etc/default/dnsflow
 ```
 
 ## Install DNSFlow Reader Dependencies

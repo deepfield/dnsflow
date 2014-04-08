@@ -6,7 +6,6 @@ LIBS_DEFAULT = -lldns -lpcap -levent
 
 ifeq ($(OS), Linux)
 	LIBS_LINUX += -lrt 
-	#LIBS = -Wl,-Bstatic $(LIBS_DEFAULT) $(LIBS_LINUX) -Wl,-Bdynamic
 	LIBS = $(LIBS_DEFAULT) $(LIBS_LINUX)
 else
 	LIBS = $(LIBS_DEFAULT)
@@ -15,9 +14,14 @@ endif
 dnsflow: dnsflow.c dcap.c dcap.h
 	@echo "Building on OS [${OS}]"
 	$(CC) dnsflow.c dcap.c -o dnsflow $(LIBS)
+
 clean:
 	@rm -f *.o dnsflow
 	@rm -rf *.dSYM
 
 install: dnsflow
 	@install -cv dnsflow /usr/local/sbin
+
+ubuntu-install: install
+	@install -cv init/dnsflow /etc/init.d
+	@install -cv default/dnsflow /etc/default

@@ -1,0 +1,10 @@
+# DNSFlow Upstart and SysVinit configuration file
+
+# Customize location of DNSFlow binary (especially for development testing).
+#DNSFLOW="/usr/local/bin/dnsflow"
+
+# Customize location of DNSFlow PID file.
+#DNSFLOW_PIDFILE="/var/run/dnsflow.pid"
+
+# Use DNSFLOW_OPTS to modify the daemon startup options.
+DNSFLOW_OPTS="-i eth0 -u 127.0.0.1 -M 4"
