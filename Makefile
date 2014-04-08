@@ -19,9 +19,14 @@ clean:
 	@rm -f *.o dnsflow
 	@rm -rf *.dSYM
 
+uninstall: clean
+	@rm /usr/local/sbin/dnsflow
+	@rm /etc/init.d/dnsflow
+	@rm /etc/default/dnsflow
+
 install: dnsflow
-	@install -cv dnsflow /usr/local/sbin
+	@install -cv dnsflow /usr/local/sbin/
 
 ubuntu-install: install
-	@install -cv init/dnsflow /etc/init.d
-	@install -cv default/dnsflow /etc/default
+	@install -cv init/dnsflow /etc/init.d/
+	@install -cv default/dnsflow /etc/default/
