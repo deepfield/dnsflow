@@ -20,9 +20,12 @@ clean:
 	@rm -rf *.dSYM
 
 uninstall: clean
-	@rm /usr/local/sbin/dnsflow
-	@rm /etc/init.d/dnsflow
-	@rm /etc/default/dnsflow
+	@rm -v /usr/local/sbin/dnsflow
+
+ubuntu-uninstall: uninstall
+	@update-rc.d -f dnsflow remove
+	@rm -v /etc/init.d/dnsflow
+	@rm -v /etc/default/dnsflow
 
 install: dnsflow
 	@install -cv dnsflow /usr/local/sbin/
@@ -30,3 +33,4 @@ install: dnsflow
 ubuntu-install: install
 	@install -cv init/dnsflow /etc/init.d/
 	@install -cv default/dnsflow /etc/default/
+	@update-rc.d dnsflow start 20 2 3 4 5 . stop 99 0 1 6 .
