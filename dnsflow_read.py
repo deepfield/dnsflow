@@ -374,7 +374,8 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument('-f', dest='extra_filter')
     p.add_argument('-F', dest='complete_filter')
-    p.add_argument('-s', dest='stats_only', action='store_true')
+    p.add_argument('-s', dest='stats_only', action='store_true', 
+        help="show only status packets")
     input_group = p.add_mutually_exclusive_group(required=True)
     input_group.add_argument('-r', dest='pcap_file')
     input_group.add_argument('-i', dest='interface')
