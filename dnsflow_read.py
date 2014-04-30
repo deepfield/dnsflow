@@ -298,8 +298,9 @@ def _print_parsed_pkt(pkt):
     ts = hdr['timestamp']
     tstr = time.strftime('%H:%M:%S', time.gmtime(ts))
 
-    print 'HEADER|%s:%d|%s|%d|%d|%d' % (hdr['src_ip'], hdr['src_port'], tstr,
-            hdr['sets_count'], hdr['flags'], hdr['sequence_number'])
+    print 'HEADER|src=%s:%d|ts=%s|n_sets=%d|flags=%d|seq=%d' % (hdr['src_ip'],
+            hdr['src_port'], tstr, hdr['sets_count'], hdr['flags'],
+            hdr['sequence_number'])
 
     if 'stats' in pkt:
         stats = pkt['stats']
@@ -324,7 +325,13 @@ class SrcTracker(object):
                     'n_records': 0,
                     'n_data_pkts': 0,
                     'n_stats_pkts': 0,
-                    'first_timestamp': hdr['timestamp']
+                    'first_timestamp': hdr['timestamp'],
+                    'seq': {
+                        'seq_last': None,
+                        'seq_total': 0,
+                        'seq_lost': 0,
+                        'seq_ooo': 0,
+                        }
                     }
             self.srcs[src_id] = src
         src['last_timestamp'] = hdr['timestamp']
@@ -348,6 +355,23 @@ class SrcTracker(object):
         else:
             src['n_data_pkts'] += 1
             src['n_records'] += hdr['sets_count']
+
+        # Track lost packets. Won't work if there are duplicates.
+        src_seq = src['seq']
+        src_seq['seq_total'] += 1
+        seq_num = hdr['sequence_number']
+        if src_seq['seq_last'] is None:
+            src_seq['seq_last'] = seq_num
+        elif seq_num == src_seq['seq_last'] + 1:
+            src_seq['seq_last'] = seq_num
+        elif seq_num > src_seq['seq_last'] + 1:
+            src_seq['seq_lost'] += seq_num - src_seq['seq_last'] - 1
+            src_seq['seq_last'] = seq_num
+        elif seq_num < src_seq['seq_last']:
+            src_seq['seq_lost'] -= 1
+            src_seq['seq_ooo'] += 1
+            # Don't update seq_last.
+
         return src_id
 
     def print_summary_src(self, src_id):
@@ -366,6 +390,10 @@ class SrcTracker(object):
                 print '  %s' % (' '.join(['%s/s=%.2f' %
                     (x[0], x[1]/ts_delta)
                     for x in src['stats_delta_total'].items()]))
+        print '  %s' % (' '.join(['%s=%d' % (x[0], x[1])
+            for x in src['seq'].items()]))
+
+
     def print_summary(self):
         for src_id in self.srcs.iterkeys():
             self.print_summary_src(src_id)
@@ -376,6 +404,8 @@ def parse_args():
     p.add_argument('-F', dest='complete_filter')
     p.add_argument('-s', dest='stats_only', action='store_true', 
         help="show only status packets")
+    p.add_argument('-S', dest='src_summary', action='store_true', 
+        help="show source summaries")
     input_group = p.add_mutually_exclusive_group(required=True)
     input_group.add_argument('-r', dest='pcap_file')
     input_group.add_argument('-i', dest='interface')
@@ -392,16 +422,22 @@ def main(argv):
     elif args.complete_filter:
         pcap_filter = args.complete_filter
     
+    if args.stats_only or args.src_summary:
+        # Only parse headers and stats pkts. I.e., skip payload of data pkts.
+        parse_stats = True
+    else:
+        parse_stats = False
+
     if args.pcap_file:
         diter = pkt_iter(pcap_file=args.pcap_file, pcap_filter=pcap_filter,
-                stats_only=args.stats_only)
+                stats_only=parse_stats)
     else:
         diter = pkt_iter(interface=args.interface, pcap_filter=pcap_filter,
-                stats_only=args.stats_only)
+                stats_only=parse_stats)
 
     srcs = SrcTracker()
     try:
-        for pkt in diter:
+        for cnt, pkt in enumerate(diter):
             src_id = srcs.update(pkt)
             if args.stats_only:
                 if 'stats' in pkt:
@@ -409,6 +445,10 @@ def main(argv):
                     # XXX This is just printing the total so far, not since
                     # the last stats pkt.
                     srcs.print_summary_src(src_id)
+            elif args.src_summary:
+                if cnt != 0 and cnt % 100000 == 0:
+                    srcs.print_summary()
+                    print '-'*40
             else:
                 _print_parsed_pkt(pkt)
     except KeyboardInterrupt:
