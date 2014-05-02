@@ -9,7 +9,7 @@
 # Short-Description:  DeepField DNS telemetry tool.
 ### END INIT INFO
 
-BASE=$(basename $0)
+BASE="dnsflow"
 
 # modify these in /etc/default/$BASE (/etc/default/dnsflow)
 DNSFLOW=/usr/local/sbin/$BASE
