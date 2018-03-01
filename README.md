@@ -83,7 +83,7 @@ make install  # optional
 
 ### Ubuntu/Debian Install
 ```
-sudo apt-get install build-essential libpcap-dev libevent-dev libldns-dev
+sudo apt-get install build-essential libpcap-dev libevent-dev libldns-dev bison
 ```
 
 ### Manual Install
