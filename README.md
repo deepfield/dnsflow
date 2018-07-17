@@ -128,3 +128,19 @@ make; make install; ldconfig
 - [ldns](http://nlnetlabs.nl/projects/ldns/)
 - [libevent](http://monkey.org/~provos/libevent/)
 - [pcap](http://www.tcpdump.org/)
+
+
+
+## Installing Source RPM
+
+In additional to installing from source code, you can choose to build
+the CentOS / RedHat 7 RPM
+
+```
+> yum-config-manager --enable rhui-REGION-rhel-server-extras rhui-REGION-rhel-server-optional
+> sudo yum install /tmp/dnsflow-1.1-1.el7.x86_64.rpm
+> sudo vi /lib/systemd/system/dnsflow.service
+   edit destination IP and interface
+> sudo service dnsflow start
+```
+   
