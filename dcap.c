@@ -46,6 +46,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <netinet/in.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
@@ -147,7 +148,7 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 		}
 
 		/* XXX Why are we only checking for IP if it's ethernet? */
-		if (ether_type != ETHERTYPE_IP) {
+		if (ether_type != ETHERTYPE_IP && ether_type != ETHERTYPE_IPV6) {
 			warnx("Non-ip: ether_type=%d\n", ether_type); 
 			return;
 		}
@@ -316,7 +317,6 @@ dcap_init_file(char *filename, char *filter, dcap_handler callback)
         struct bpf_program      bpf;
 	struct dcap		*dcap = NULL;
 	pcap_t			*pcap = NULL;
-
 
 	pcap = pcap_open_offline(filename, pcap_errbuf);
 	if (pcap == NULL) {

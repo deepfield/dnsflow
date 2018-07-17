@@ -39,13 +39,17 @@
      sets		[variable]
 
    Data Set:
-     client_ip		[4 bytes]
+     ip_vers        [1 byte]
+     client_ip		[4 bytes]/[16 bytes]
      names_count	[1 byte]
      ips_count		[1 byte]
+     ip6s_count     [1 byte]
      names_len		[2 bytes]
      names		[variable] Each is a Nul terminated string.
      ips		[variable] Word-aligned, starts at names + names_len,
      			           each is 4 bytes.
+     ip6s       [variable] Word-aligned, starts at names + names_len,
+                           each is 16 bytes.
 
     Stats Set:
       pkts_captured	[4 bytes]
@@ -63,7 +67,7 @@
 #if __linux__
 #include <sys/prctl.h>
 #endif
-
+#include <inttypes.h>
 #include <errno.h>
 #include <math.h>
 #include <signal.h>
@@ -78,6 +82,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <netinet/in.h>
 #include <netinet/udp.h>
 #include <pcap/pcap.h>
@@ -98,16 +103,20 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+
 #define DNSFLOW_MAX_PARSE		255
 #define DNSFLOW_PKT_MAX_SIZE		65535
 #define DNSFLOW_PKT_TARGET_SIZE		1200
-#define DNSFLOW_VERSION			2
+#define DNSFLOW_VERSION			3
 #define DNSFLOW_PORT			5300
 #define DNSFLOW_UDP_MAX_DSTS		10
 
 #define DNSFLOW_FLAG_STATS		0x0001
 
 #define DNSFLOW_SETS_COUNT_MAX		255
+#define IP6VERSION                      0x60 
+#define IP6VERSIONMASK                  0xf0
+#define IP6PACKETHDRLEN             40
 struct dnsflow_hdr {
 	uint8_t			version;
 	uint8_t			sets_count;
@@ -117,18 +126,27 @@ struct dnsflow_hdr {
 
 #define DNSFLOW_NAMES_COUNT_MAX		255
 #define DNSFLOW_IPS_COUNT_MAX		255
+#define DNSFLOW_IP4_SET_HDR         12
+#define DNSFLOW_IP6_SET_HDR         24
 struct dnsflow_set_hdr {
-	in_addr_t		client_ip;
+	uint8_t			ip_vers;
 	uint8_t			names_count;
 	uint8_t			ips_count;
+	uint8_t			ip6s_count;
 	uint16_t		names_len;
+	union {
+		struct in_addr		client_ip4;
+		struct in6_addr		client_ip6;
+	}client_ip;
 };
 struct dns_data_set {
-	uint8_t 		*names[DNSFLOW_MAX_PARSE];
-	int			name_lens[DNSFLOW_MAX_PARSE];
-	int			num_names;
-	in_addr_t		ips[DNSFLOW_MAX_PARSE];
-	int			num_ips;
+	uint8_t			*names[DNSFLOW_MAX_PARSE];
+	int				name_lens[DNSFLOW_MAX_PARSE];
+	int				num_names;
+	struct in_addr	ips[DNSFLOW_MAX_PARSE];
+	struct in6_addr	ip6s[DNSFLOW_MAX_PARSE];
+	int				num_ips;
+	int				num_ip6s;
 };
 
 struct dnsflow_data_pkt {
@@ -359,13 +377,15 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns)
 	/* Offsets from start of udp. */
 	int udp_offset = 0;	/* Offset from udp to encap udp. */
 	/* Label offsets used. */
-	int src_port_offset = 0;
 	int dns_flags_offset = 10;
 
 	/* Offsets from start of ip. */
 	int ip_offset = 0;	/* Offset from ip to encap ip. */
+	int ip6_offset = 40;	/* Offset of udp from ip6. */
 	/* Label offsets used. */
 	int dst_ip_offset = 16;
+	int checksum_udp_offset = 6;
+
 
 	/* Buffers to build pcap filter */
 	char port_filter[1024];
@@ -386,12 +406,10 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns)
 	/* Port filter - Match src port 53 (and optionally 5353). */
 	if (enable_mdns) {
 		snprintf(port_filter, sizeof(port_filter),
-			"(udp[%d:2] = 53 or udp[%d:2] = 5353)",
-			src_port_offset + udp_offset,
-			src_port_offset + udp_offset);
+			 "(src port 53 or src port 5353)");
 	} else {
 		snprintf(port_filter, sizeof(port_filter),
-			"udp[%d:2] = 53", src_port_offset + udp_offset);
+			 "src port 53");
 	}
 
 	/* Base dns filter - combine port and flag filters. */
@@ -399,10 +417,10 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns)
 	 * qr=1, rd=1, ra=1, rcode=0.
 	 * XXX Could also pull out just A/AAAA. */
 	snprintf(dns_resp_filter, sizeof(dns_resp_filter),
-			"udp and %s and udp[%d:2] & 0x8187 = 0x8180",
-			port_filter, dns_flags_offset + udp_offset);
+		 "(udp and %s and (ip6 or (ip and udp[%d:1] & 0x80 = 0x80)))", port_filter, dns_flags_offset + udp_offset);
 
 	if (num_procs > 1) {
+		char *cp = NULL;
 		/* Add multi-proc filter.
 		 * Select based on mod of client ip.  Probably never a problem,
 		 * but doing offset from ip, so ip options will break view into
@@ -411,14 +429,19 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns)
 		 * each client in same stream. Another possibility would be
 		 * the udp checksum, assuming it's set.  */
 		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
-			"%s and ip[%d:4] - ip[%d:4] / %u * %u = %u",
-			dns_resp_filter, dst_ip_offset + ip_offset,
-			dst_ip_offset + ip_offset, num_procs, num_procs,
-			proc_i - 1);
+			 "(ip and %s and (ip[%d:4] - ip[%d:4] / %u * %u = %u)) or ",
+			 dns_resp_filter, dst_ip_offset + ip_offset,
+			 dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
+		cp = multi_proc_filter;
+		cp += strlen(multi_proc_filter);
+
+		snprintf(cp, sizeof(multi_proc_filter) - (cp - multi_proc_filter),
+			 "(ip6 and %s and (ip6[%d:2] - ip6[%d:2] / %u * %u = %u))",
+			 dns_resp_filter, ip6_offset + checksum_udp_offset, 
+			 ip6_offset + checksum_udp_offset, num_procs, num_procs, proc_i - 1);
 	} else {
 		/* Just copy base dns filter. */
-		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
-				"%s", dns_resp_filter);
+		snprintf(multi_proc_filter, sizeof(multi_proc_filter), "%s", dns_resp_filter);
 	}
 
 
@@ -485,6 +508,23 @@ write_pid_file(char *pid_file)
 	return 1;
 }
 
+static struct ip6_hdr *
+ip6_check(int pkt_len, char *ip_pkt) {
+	struct ip6_hdr  *ip6 = (struct ip6_hdr *)ip_pkt;
+	if (pkt_len < sizeof(struct ip6_hdr)) {
+		return (NULL);
+	}    
+	if ((ip6->ip6_vfc & IP6VERSIONMASK) != IP6VERSION) {
+		return (NULL);
+	}    
+	if (pkt_len < IP6PACKETHDRLEN) {
+		return (NULL);
+	}    
+	if (pkt_len < ntohs(ip6->ip6_plen)) {
+		return (NULL);
+	}    
+	return (ip6);
+}
 
 /* IP checks - version, header len, pkt len. */
 static struct ip *
@@ -512,18 +552,45 @@ ip4_check(int pkt_len, char *ip_pkt) {
 }
 
 static struct udphdr *
-udp4_check(int pkt_len, struct ip *ip)
+udp_check(int pkt_len, struct ip *ip, struct ip6_hdr *ip6)
 {
 	struct udphdr	*udphdr;
-	int		ip_hdr_len = ip->ip_hl << 2;
+	struct ip6_ext  *ip6_ext;
+	int		ip_hdr_len;
+	int		next_hdr;
+	int		offset;
 
-	if (ip->ip_p != IPPROTO_UDP) {
+	if (ip && ip->ip_p == IPPROTO_UDP) {
+		ip_hdr_len = ip->ip_hl << 2;
+		if (pkt_len < sizeof(struct ip) + sizeof(struct udphdr)) {
+			return (NULL);
+		}
+		udphdr = (struct udphdr *) (((u_char *) ip) + ip_hdr_len);
+	} else if (ip6) {
+		next_hdr = ip6->ip6_nxt;
+		ip_hdr_len = sizeof(struct ip6_hdr);
+		ip6_ext = (struct ip6_ext *)((struct ip6_hdr *)(ip6 + 1));
+		while (next_hdr != IPPROTO_UDP) {
+			if (pkt_len < ip_hdr_len + sizeof(struct ip6_ext)) {
+				return (NULL);
+			}
+			next_hdr = ip6_ext->ip6e_nxt;
+			offset = ip6_ext->ip6e_len;
+			ip_hdr_len +=offset;
+			ip6_ext = (struct ip6_ext *)(((caddr_t)ip6_ext) + offset);
+		}
+		if (next_hdr == IPPROTO_UDP) {
+			if (pkt_len < ip_hdr_len + sizeof(struct udphdr)) {
+				return (NULL);
+			}
+			udphdr = (struct udphdr *)ip6_ext;
+		} else {
+			return (NULL);
+		}
+	} else {
 		return (NULL);
 	}
-	if (pkt_len < sizeof(struct ip) + sizeof(struct udphdr)) {
-		return (NULL);
-	}
-	udphdr = (struct udphdr *) (((u_char *) ip) + ip_hdr_len);
+
 	if (pkt_len < ip_hdr_len + ntohs(udphdr->uh_ulen)) {
 		return (NULL);
 	}
@@ -536,28 +603,32 @@ udp4_check(int pkt_len, struct ip *ip)
  * On success, ip_ret and udphdr_ret will point to the headers. */
 static char *
 ip_udp_check(int pkt_len, char *ip_pkt,
-		struct ip **ip_ret, struct udphdr **udphdr_ret)
+		struct ip **ip_ret, struct ip6_hdr **ip6_ret, struct udphdr **udphdr_ret)
 {
 	char			*udp_data = NULL;
 	struct ip		*ip = NULL;
+	struct ip6_hdr	*ip6 = NULL;
 	struct udphdr		*udphdr = NULL;
 
 	*ip_ret = NULL;
+	*ip6_ret = NULL;
 	*udphdr_ret = NULL;
 
 	/* XXX Count/log number of bad pkts. */
 	/* XXX Need to pull in ip/udp checksumming and fragment handling. */
 
-	if ((ip = ip4_check(pkt_len, ip_pkt)) == NULL) {
+	if (((ip = ip4_check(pkt_len, ip_pkt)) == NULL) && 
+		((ip6 = ip6_check(pkt_len, ip_pkt)) == NULL)) {
 		return NULL;
 	}
 
-	if ((udphdr = udp4_check(pkt_len, ip)) == NULL) {
+	if ((udphdr = udp_check(pkt_len, ip, ip6)) == NULL) {
 		return NULL;
 	}
 	udp_data = (char *)udphdr + sizeof(struct udphdr);
 
 	*ip_ret = ip;
+	*ip6_ret = ip6;
 	*udphdr_ret = udphdr;
 	return (udp_data);
 }
@@ -569,9 +640,10 @@ ip_udp_check(int pkt_len, char *ip_pkt,
  * On success, ip_ret and udphdr_ret will point to the headers. */
 static char *
 ip_encap_check(int pkt_len, char *encap_hdr, int ip_encap_offset,
-		struct ip **ip_ret, struct udphdr **udphdr_ret)
+		struct ip **ip_ret, struct ip6_hdr **ip6_ret, struct udphdr **udphdr_ret)
 {
 	*ip_ret = NULL;
+	*ip6_ret = NULL;
 	*udphdr_ret = NULL;
 
 	if (pkt_len < ip_encap_offset) {
@@ -579,7 +651,7 @@ ip_encap_check(int pkt_len, char *encap_hdr, int ip_encap_offset,
 	}
 
 	return (ip_udp_check(pkt_len - ip_encap_offset,
-			encap_hdr + ip_encap_offset, ip_ret, udphdr_ret));
+			encap_hdr + ip_encap_offset, ip_ret, ip6_ret, udphdr_ret));
 }
 
 static ldns_pkt *
@@ -615,7 +687,8 @@ dnsflow_dns_check(int pkt_len, char *dns_pkt)
 	/* Only look at replies to A queries. Could possibly look at
 	 * CNAME queries as well, but those aren't generally used. */
 	q_rr = ldns_rr_list_rr(ldns_pkt_question(lp), 0);
-	if (ldns_rr_get_type(q_rr) != LDNS_RR_TYPE_A) {
+	if (ldns_rr_get_type(q_rr) != LDNS_RR_TYPE_A && 
+		ldns_rr_get_type(q_rr) != LDNS_RR_TYPE_AAAA) {
 		ldns_pkt_free(lp);
 		return (NULL);
 	}
@@ -636,11 +709,13 @@ dnsflow_dns_extract(ldns_pkt *lp)
 	ldns_rdf			*rdf;
 
 	int				i, j;
-	in_addr_t			*ip_ptr;
+	struct in_addr			*ip_ptr;
+	struct in6_addr			*ip6_ptr;
 
 
 	data->num_names = 0;
 	data->num_ips = 0;
+	data->num_ip6s = 0;
 
 	q_rr = ldns_rr_list_rr(ldns_pkt_question(lp), 0);
 
@@ -691,8 +766,15 @@ dnsflow_dns_extract(ldns_pkt *lp)
 					_log("Too many ips");
 					continue;
 				}
-				ip_ptr = (in_addr_t *) ldns_rdf_data(rdf);
+				ip_ptr = (struct in_addr *) ldns_rdf_data(rdf);
 				data->ips[data->num_ips++] = *ip_ptr;
+			} else if (rr_type == LDNS_RR_TYPE_AAAA) {
+				if (data->num_ip6s == DNSFLOW_MAX_PARSE) {
+					_log("Too many ips");
+					continue;
+				}
+				ip6_ptr = (struct in6_addr *) ldns_rdf_data(rdf);
+				data->ip6s[data->num_ip6s++] = *ip6_ptr;
 			} else {
 				/* XXX Only looking at A queries, so this is
 				 * unexpected rdata. */
@@ -704,7 +786,7 @@ dnsflow_dns_extract(ldns_pkt *lp)
 	if (data->num_names == 0) {
 		return (NULL);
 	}
-	if (data->num_ips == 0) {
+	if (data->num_ips == 0 && data->num_ip6s == 0) {
 		return (NULL);
 	}
 
@@ -712,19 +794,64 @@ dnsflow_dns_extract(ldns_pkt *lp)
 }
 
 static void
-dnsflow_pkt_send(struct dnsflow_buf *buf)
+dnsflow_pkt_send(struct dnsflow_buf *dnsflow_buf)
 {
 	static int 		udp_socket = 0;
 	struct pcap_pkthdr 	pkthdr;
 	int			i;
 
 	if (pdump != NULL) {
+		uint8_t			tmp[4096];
+		struct iphdr		*ip;
+		struct udphdr		*udp;
+		uint8_t			*data;
+		struct sockaddr_in	saddr, daddr;
+		u_int32_t		*link;
+
+		uint32_t		pf_type;	/* Loopback "header" */
+		int			linkheader_size = sizeof(pf_type);
+
+		memset(tmp, 0, sizeof(tmp));
+
+		pf_type = PF_INET;
+
+		link = (u_int32_t *) tmp;
+		ip = (struct iphdr *) (link + 1);
+		udp = (struct udphdr *) (ip+1);
+		data = (uint8_t *) (udp+1);
+
+
+		daddr.sin_family = AF_INET;
+		saddr.sin_family = AF_INET;
+		daddr.sin_port = htons(5300);
+		saddr.sin_port = htons(0);
+		inet_pton(AF_INET, "127.0.0.1", (struct in_addr *)&daddr.sin_addr.s_addr);
+		inet_pton(AF_INET, "127.0.0.1", (struct in_addr *)&saddr.sin_addr.s_addr);
+
+		ip->ihl      = 5; /* header length, number of 32-bit words */
+		ip->version  = 4;
+		ip->tos      = 0x0;
+		ip->id       = 0;
+		ip->frag_off = htons(0x4000); /* Don't fragment */
+		ip->ttl      = 64;
+		ip->tot_len  = htons(sizeof(struct iphdr) + sizeof(struct udphdr) + dnsflow_buf->db_len);
+		ip->protocol = IPPROTO_UDP;
+		ip->saddr    = saddr.sin_addr.s_addr;
+		ip->daddr    = daddr.sin_addr.s_addr;
+
+		udp->uh_sport = saddr.sin_port;
+		udp->uh_dport = daddr.sin_port;
+		udp->uh_ulen = htons(sizeof(struct udphdr) + dnsflow_buf->db_len);
+		udp->uh_sum = 0;
+
+		memcpy(link, &pf_type, linkheader_size);
+		memcpy(data, &dnsflow_buf->db_pkt_hdr, sizeof(tmp) - (data - tmp));
+
 		gettimeofday(&pkthdr.ts, NULL);
-		buf->db_loop_hdr = PF_UNSPEC;
-		pkthdr.len = buf->db_len + 4; /* 4 for loopback hdr. */
+		pkthdr.len = dnsflow_buf->db_len + 20 + 8 + 4; /* ip=20, udp=8, 4=loopback */
 		pkthdr.caplen = pkthdr.len;
-		pcap_dump((u_char *)pdump, &pkthdr,
-				(u_char *)&buf->db_loop_hdr);
+		pcap_dump((u_char *)pdump, &pkthdr, (u_char *) tmp);
+		return;
 	}
 
 	if (udp_num_dsts == 0) {
@@ -737,7 +864,7 @@ dnsflow_pkt_send(struct dnsflow_buf *buf)
 		}
 	}
 	for (i = 0; i < udp_num_dsts; i++) {
-		if (sendto(udp_socket, &buf->db_pkt_hdr, buf->db_len, 0,
+		if (sendto(udp_socket, &dnsflow_buf->db_pkt_hdr, dnsflow_buf->db_len, 0,
 				(struct sockaddr *)&dst_so_addrs[i],
 				sizeof(struct sockaddr_in)) < 0) {
 			warnx("send failed");
@@ -770,13 +897,15 @@ dnsflow_push_cb(int fd, short event, void *arg)
 
 /* XXX Need more care to prevent buffer overruns. */
 static void
-dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
+dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6,  struct dns_data_set *dns_data)
 {
-	struct dnsflow_hdr	*dnsflow_hdr;
+	struct dnsflow_hdr	    *dnsflow_hdr;
 	struct dnsflow_set_hdr	*set_hdr;
-	char			*pkt_start, *pkt_cur, *pkt_end, *names_start;
-	int			i;
-	in_addr_t		*ip_ptr;
+	char			        *pkt_start, *pkt_cur, *pkt_end, *names_start;
+	int			            i;
+	int                     header_len = 0;
+	struct in_addr		    *ip_ptr;
+	struct in6_addr		    *ip6_ptr;
 	
 	dnsflow_hdr = &data_buf->db_pkt_hdr;
 	pkt_start = (char *)dnsflow_hdr;
@@ -793,13 +922,23 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 	/* Start building new set. */
 	set_hdr = (struct dnsflow_set_hdr *)pkt_cur;
 	bzero(set_hdr, sizeof(struct dnsflow_set_hdr));
-	set_hdr->client_ip = client_ip;
 	/* XXX Not warning if we're truncating names, ips. */
+	if (client_ip) {
+		header_len = DNSFLOW_IP4_SET_HDR;
+		set_hdr->ip_vers = 4;
+		set_hdr->client_ip.client_ip4 = *client_ip;
+	} else {
+		header_len = DNSFLOW_IP6_SET_HDR;
+		set_hdr->ip_vers = 6;
+		set_hdr->client_ip.client_ip6 = *client_ip6;
+	}
 	set_hdr->names_count =
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
 	set_hdr->ips_count =
 		MIN(dns_data->num_ips, DNSFLOW_IPS_COUNT_MAX);
-	data_buf->db_len += sizeof(struct dnsflow_set_hdr);
+	set_hdr->ip6s_count = 
+		MIN(dns_data->num_ip6s, DNSFLOW_IPS_COUNT_MAX);
+	data_buf->db_len += header_len;
 	pkt_cur = pkt_start + data_buf->db_len;
 
 	names_start = pkt_cur;
@@ -822,12 +961,18 @@ dnsflow_pkt_build(in_addr_t client_ip, struct dns_data_set *dns_data)
 	set_hdr->names_len = htons(pkt_cur - names_start);
 
 	for (i = 0; i < set_hdr->ips_count; i++) {
-		ip_ptr = (in_addr_t *)pkt_cur;
+		ip_ptr = (struct in_addr *)pkt_cur;
 		*ip_ptr = dns_data->ips[i];
-		data_buf->db_len += sizeof(in_addr_t);
+		data_buf->db_len += sizeof(struct in_addr);
 		pkt_cur = pkt_start + data_buf->db_len;
 	}
-
+	for (i = 0; i < set_hdr->ip6s_count; i++) {
+		ip6_ptr = (struct in6_addr *)pkt_cur;
+		*ip6_ptr = dns_data->ip6s[i];
+		data_buf->db_len += sizeof(struct in6_addr);
+		pkt_cur = pkt_start + data_buf->db_len;
+	}
+    
 	dnsflow_hdr->sets_count++;
 
 	if (data_buf->db_len >= DNSFLOW_PKT_TARGET_SIZE ||
@@ -841,6 +986,7 @@ static void
 dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt, void *user)
 {
 	struct ip		*ip;
+	struct ip6_hdr		*ip6;
 	struct udphdr		*udphdr;
 	char			*udp_data;
 	int			ip_encap_offset = 0;
@@ -849,7 +995,7 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt, void *user)
 	ldns_pkt		*lp;
 	struct dns_data_set	*dns_data;
 
-	if ((udp_data = ip_udp_check(pkt_len, ip_pkt, &ip, &udphdr)) == NULL) {
+	if ((udp_data = ip_udp_check(pkt_len, ip_pkt, &ip, &ip6,  &udphdr)) == NULL) {
 		return;
 	}
 	remaining -= udp_data - ip_pkt;
@@ -864,8 +1010,9 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt, void *user)
 		ip_encap_offset = sizeof(struct jmirror_hdr);
 	}
 	if (ip_encap_offset != 0) {
+
 		udp_data = ip_encap_check(remaining, udp_data, ip_encap_offset,
-				&ip, &udphdr); 
+				&ip, &ip6, &udphdr); 
 		if (udp_data == NULL) {
 			return;
 		}
@@ -883,8 +1030,11 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt, void *user)
 	}
 
 	/* Should be good to go. */
-	dnsflow_pkt_build(ip->ip_dst.s_addr, dns_data);
-
+	if (ip) {
+		dnsflow_pkt_build(&ip->ip_dst, NULL, dns_data);
+	} else if (ip6) {
+		dnsflow_pkt_build(NULL, &ip6->ip6_dst, dns_data);
+	}
 	//ldns_pkt_print(stdout, lp);
 	ldns_pkt_free(lp);
 	lp = NULL;
@@ -969,7 +1119,7 @@ usage(void)
 	extern char *__progname;
 
 	fprintf(stderr, "Usage: %s [-hp] [-i interface] [-r pcap_file] "
-			"[-f filter_expression]\n", __progname);
+			"[-f filter_expression] \n", __progname);
 	fprintf(stderr, "\t[-P pidfile]  [-m proc_i/n_procs] [-M n_procs] "
 			"[-s sample_rate]\n");
 	/* Encap options */
@@ -1000,7 +1150,7 @@ main(int argc, char *argv[])
 	int			is_child = 0;
 	uint16_t		sample_rate = 0;
 
-	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Yh")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Y:v:h")) != -1) {
 		switch (c) {
 		case 'i':
 			intf_name = optarg;
