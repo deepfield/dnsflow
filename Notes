@@ -1,0 +1,3 @@
+# Build RPM
+> cd rpmbuild
+> rpmbuild -ba SPECS/dnsflow.spec
