@@ -94,7 +94,6 @@ class reader(object):
 def process_pkt(dl_type, ts, buf, stats_only=False):
     pkt = {}
     err = None
-
     if dl_type == dpkt.pcap.DLT_NULL:
         # Loopback
         try:
@@ -138,8 +137,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
         return (pkt, err)
     cp += struct.calcsize(fmt)
 
-    # Version 0, 1, or 2
-    if (vers != 0 and vers != 1 and vers !=2) or sets_count == 0:
+    if (vers not in [0, 1, 2, 3]) or sets_count == 0:
         err = 'BAD_PKT|%s' % (src_ip)
         return (pkt, err)
    
@@ -153,7 +151,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
     pkt['header'] = hdr
     
     if flags & DNSFLOW_FLAG_STATS:
-        if vers == 2:
+        if vers == 2 or vers == 3:
             fmt = '!5I'
         else:
             # vers 0 or 1
@@ -177,12 +175,39 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
         # data pkt
         pkt['data'] = []
         for i in range(sets_count):
-            # client_ip, names_count, ips_count, names_len
-            fmt = '!IBBH'
             try:
-                vals = struct.unpack(fmt,
-                        dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
-                client_ip, names_count, ips_count, names_len = vals
+                if vers == 3 :
+                    #ipvers
+                    fmt = '!B'
+                    ipvers = struct.unpack(fmt,
+                            dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
+                    cp += struct.calcsize(fmt)
+
+                    # names_count, ips_count, ip6s_count, names_len, padding, client_ip(v4/v6)
+                    if ipvers[0] == 4:
+                        fmt = '!BBBHHI'
+                        vals = struct.unpack(fmt,
+                                dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
+                        names_count, ips_count, ip6s_count, names_len, padding, client_ip = vals
+                    else :
+                        fmt = '!BBBHHIIII'
+                        vals = struct.unpack(fmt,
+                               dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
+                        names_count, ips_count, ip6s_count, names_len, padding, ip1, ip2, ip3, ip4 = vals
+                        ipoctets = [ip4, ip3, ip2, ip1]
+                        client_ip = 0
+                        for i, val in enumerate(ipoctets):
+                            val <<= 8* struct.calcsize('I') * i
+                            client_ip = client_ip | val
+
+                else :
+                    # client_ip, names_count, ips_count, names_len
+                    fmt = '!IBBH'
+                    ipvers = 4
+                    vals = struct.unpack(fmt,
+                            dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
+                    client_ip, names_count, ips_count, names_len = vals
+
             except struct.error, e:
                 err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                 return (pkt, err)
@@ -198,7 +223,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
                 err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                 return (pkt, err)
             cp += struct.calcsize(fmt)
-            if vers == 1 or vers == 2:
+            if vers in [1, 2, 3] :
                 # Each name is in the form of an uncompressed dns name.
                 # names are root domain (Nul) terminated, and padded with Nuls
                 # on the end to word align. 
@@ -238,10 +263,32 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
             cp += struct.calcsize(fmt)
             ips = [str(ipaddr.IPAddress(x)) for x in ips]
 
+            ip6s = []
+            if vers == 3:
+                fmt = '!IIII' 
+                for x in range(ip6s_count):
+                    try:
+                        ipval = list(struct.unpack(fmt,
+                                dnsflow_pkt[cp:cp + struct.calcsize(fmt)]))
+                    except struct.error, e:
+                        err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
+                        return (pkt, err)
+                    cp += struct.calcsize(fmt)
+
+                    ipval.reverse()
+                    ip6_val = 0
+                    for i, val in enumerate(ipval):
+                        val <<= 8* struct.calcsize('I') * i
+                        ip6_val = ip6_val | val
+                    
+                    ip6s.append(ip6_val)
+                ip6s = [str(ipaddr.IPAddress(x, 6)) for x in ip6s]
+
             data = {}
             data['client_ip'] = client_ip
             data['names'] = names
             data['ips'] = ips
+            data['ip6s'] = ip6s
             pkt['data'].append(data)
 
     return (pkt, err)
@@ -308,8 +355,8 @@ def _print_parsed_pkt(pkt):
             for x in stats.items()]))
     else:
         for data in pkt['data']:
-            print 'DATA|%s|%s|%s|%s' % (data['client_ip'], tstr,
-                    ','.join(data['names']), ','.join(data['ips']))
+            print 'DATA|%s|%s|%s|%s|%s' % (data['client_ip'], tstr,
+                    ','.join(data['names']), ','.join(data['ips']), ','.join(data['ip6s']))
 
 
 class SrcTracker(object):
