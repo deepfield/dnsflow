@@ -1,0 +1,8 @@
+[Unit]
+Description=dnsflow
+
+[Service]
+ExecStart=/usr/bin/dnsflow -i eth0 -u 127.0.0.1
+
+[Install]
+WantedBy=multi-user.target

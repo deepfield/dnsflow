@@ -28,9 +28,13 @@ ubuntu-uninstall: uninstall
 	@rm -v /etc/default/dnsflow
 
 install: dnsflow
-	@install -cv dnsflow /usr/local/sbin/
+	@mkdir $(DESTDIR)/sbin/
+	@install -cv dnsflow $(DESTDIR)/sbin/
 
 ubuntu-install: install
 	@install -cv init/dnsflow /etc/init.d/
 	@install -cv default/dnsflow /etc/default/
 	@update-rc.d dnsflow defaults
+
+install-service:
+	@echo "install"
