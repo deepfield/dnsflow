@@ -1,8 +1,11 @@
 # Build RPM
-> yum-config-manager --enable rhui-REGION-rhel-server-extras rhui-REGION-rhel-server-optional
-> sudo yum install rpm-build git gcc  libevent-devel libpcap-devel ldns-devel openssl-devel
+# Build RPM
+> sudo yum-config-manager --enable rhui-REGION-rhel-server-extras rhui-REGION-rhel-server-optional
+> sudo yum install -y gcc rpm-build git libevent-devel libpcap-devel ldns-devel openssl-devel
 > git clone git@github.com:deepfield/dnsflow.git dnsflow
-> cd dnsflow
-> mkdir dnsflow-1.1; cp dcap.c dcap.h LICENSE  dnsflow_read.py  Makefile  dnsflow.c tests README.md dnsflow-1.1; tar zcvf dnsflow-1.1.tar.gz dnsflow-1.1
-> cd rpmbuild
-> rpmbuild -ba rpmbuild/SPECS/dnsflow.spec
+> cd dnsflow/rpmbuild
+> cp SOURCES/dnsflow-1.1.tar.gz  /home/ec2-user/rpmbuild/SOURCES/dnsflow-1.1.tar.gz
+> rpmbuild -ba SPECS/dnsflow.spec
+
+# Install RPM
+> sudo yum install dnsflow-1.1-1.el6.x86_64.rpm
