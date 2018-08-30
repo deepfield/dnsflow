@@ -39,17 +39,16 @@
      sets		[variable]
 
    Data Set:
-     ip_vers        [1 byte]
+     ip_vers		[1 byte]
      client_ip		[4 bytes]/[16 bytes]
+     resolver_ip	[4 bytes]/[16 bytes]
      names_count	[1 byte]
      ips_count		[1 byte]
-     ip6s_count     [1 byte]
+     ip6s_count		[1 byte]
      names_len		[2 bytes]
      names		[variable] Each is a Nul terminated string.
-     ips		[variable] Word-aligned, starts at names + names_len,
-     			           each is 4 bytes.
-     ip6s       [variable] Word-aligned, starts at names + names_len,
-                           each is 16 bytes.
+     ips		[variable] Word-aligned, starts at names + names_len, each is 4 bytes
+     ip6s		[variable] Word-aligned, starts at names + names_len, each is 16 bytes
 
     Stats Set:
       pkts_captured	[4 bytes]
@@ -107,7 +106,7 @@
 #define DNSFLOW_MAX_PARSE		255
 #define DNSFLOW_PKT_MAX_SIZE		65535
 #define DNSFLOW_PKT_TARGET_SIZE		1200
-#define DNSFLOW_VERSION			3
+#define DNSFLOW_VERSION			4
 #define DNSFLOW_PORT			5300
 #define DNSFLOW_UDP_MAX_DSTS		10
 
@@ -116,7 +115,7 @@
 #define DNSFLOW_SETS_COUNT_MAX		255
 #define IP6VERSION                      0x60 
 #define IP6VERSIONMASK                  0xf0
-#define IP6PACKETHDRLEN             40
+#define IP6PACKETHDRLEN			40
 struct dnsflow_hdr {
 	uint8_t			version;
 	uint8_t			sets_count;
@@ -126,8 +125,8 @@ struct dnsflow_hdr {
 
 #define DNSFLOW_NAMES_COUNT_MAX		255
 #define DNSFLOW_IPS_COUNT_MAX		255
-#define DNSFLOW_IP4_SET_HDR         12
-#define DNSFLOW_IP6_SET_HDR         24
+#define DNSFLOW_IP4_SET_HDR		40
+#define DNSFLOW_IP6_SET_HDR		40
 struct dnsflow_set_hdr {
 	uint8_t			ip_vers;
 	uint8_t			names_count;
@@ -137,7 +136,11 @@ struct dnsflow_set_hdr {
 	union {
 		struct in_addr		client_ip4;
 		struct in6_addr		client_ip6;
-	}client_ip;
+	} client_ip;
+	union {
+		struct in_addr		resolver_ip4;
+		struct in6_addr		resolver_ip6;
+	} resolver_ip;
 };
 struct dns_data_set {
 	uint8_t			*names[DNSFLOW_MAX_PARSE];
@@ -897,15 +900,15 @@ dnsflow_push_cb(int fd, short event, void *arg)
 
 /* XXX Need more care to prevent buffer overruns. */
 static void
-dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6,  struct dns_data_set *dns_data)
+dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct in_addr* resolver_ip, struct in6_addr* resolver_ip6, struct dns_data_set *dns_data)
 {
-	struct dnsflow_hdr	    *dnsflow_hdr;
-	struct dnsflow_set_hdr	*set_hdr;
+	struct dnsflow_hdr		*dnsflow_hdr;
+	struct dnsflow_set_hdr		*set_hdr;
 	char			        *pkt_start, *pkt_cur, *pkt_end, *names_start;
-	int			            i;
-	int                     header_len = 0;
-	struct in_addr		    *ip_ptr;
-	struct in6_addr		    *ip6_ptr;
+	int				i;
+	int				header_len = 0;
+	struct in_addr			*ip_ptr;
+	struct in6_addr			*ip6_ptr;
 	
 	dnsflow_hdr = &data_buf->db_pkt_hdr;
 	pkt_start = (char *)dnsflow_hdr;
@@ -927,10 +930,12 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6,  struc
 		header_len = DNSFLOW_IP4_SET_HDR;
 		set_hdr->ip_vers = 4;
 		set_hdr->client_ip.client_ip4 = *client_ip;
+		set_hdr->resolver_ip.resolver_ip4 = *resolver_ip;
 	} else {
 		header_len = DNSFLOW_IP6_SET_HDR;
 		set_hdr->ip_vers = 6;
 		set_hdr->client_ip.client_ip6 = *client_ip6;
+		set_hdr->resolver_ip.resolver_ip6 = *resolver_ip6;
 	}
 	set_hdr->names_count =
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
@@ -1031,9 +1036,9 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt, void *user)
 
 	/* Should be good to go. */
 	if (ip) {
-		dnsflow_pkt_build(&ip->ip_dst, NULL, dns_data);
+		dnsflow_pkt_build(&ip->ip_dst, NULL, &ip->ip_src, NULL, dns_data);
 	} else if (ip6) {
-		dnsflow_pkt_build(NULL, &ip6->ip6_dst, dns_data);
+		dnsflow_pkt_build(NULL, &ip6->ip6_dst, NULL, &ip6->ip6_src, dns_data);
 	}
 	//ldns_pkt_print(stdout, lp);
 	ldns_pkt_free(lp);

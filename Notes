@@ -1,3 +1,5 @@
 # Build RPM
-> cd rpmbuild
+> sudo yum install rpm-build git
+> git clone git@github.com:deepfield/dnsflow.git dnsflow
+> cd dnsflow/rpmbuild
 > rpmbuild -ba SPECS/dnsflow.spec
