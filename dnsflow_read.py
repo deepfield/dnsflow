@@ -149,6 +149,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
     hdr['flags'] = flags
     hdr['sequence_number'] = seq_num
     pkt['header'] = hdr
+    hdr['src_ip_str'] = str(ipaddr.IPAddress(src_ip))
 
     if flags & DNSFLOW_FLAG_STATS:
         if vers == 2 or vers == 3:
@@ -382,17 +383,13 @@ def _print_parsed_pkt(pkt):
     ts = hdr['timestamp']
     tstr = time.strftime('%H:%M:%S', time.gmtime(ts))
 
-    print 'HEADER|src=%s:%d|ts=%s|n_sets=%d|flags=%d|seq=%d' % (hdr['src_ip'],
-            hdr['src_port'], tstr, hdr['sets_count'], hdr['flags'],
-            hdr['sequence_number'])
-
     if 'stats' in pkt:
         stats = pkt['stats']
         print "STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1])
             for x in stats.items()]))
     else:
         for data in pkt['data']:
-            print 'DATA|%s|%s|%s|%s|%s|%s' % (data['resolver_ip'], data['client_ip'], tstr,
+            print '%s|%s|%s|%s|%s|%s|%s' % (hdr['src_ip_str'], data['resolver_ip'], data['client_ip'], tstr,
                     ','.join(data['names']), ','.join(data['ips']), ','.join(data['ip6s']))
 
 
@@ -520,6 +517,9 @@ def main(argv):
                 stats_only=parse_stats)
 
     srcs = SrcTracker()
+
+    print '%s|%s|%s|%s|%s|%s|%s' % ("dnsflow server", "resolver ip", "client ip", "time", "names", "ipv4", "ipv6")
+
     try:
         for cnt, pkt in enumerate(diter):
             src_id = srcs.update(pkt)
