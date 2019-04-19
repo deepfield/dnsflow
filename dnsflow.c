@@ -943,13 +943,15 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	set_len += ips_len_total;
 	set_len += ip6s_len_total;
 	/* This set will not fit in any dnsflow pkt*/
-	if (set_len > MTU - sizeof(dnsflow_hdr)) {
+	_log("Estimated set length: %u\n", set_len);
+    _log("Remaining size in the pkt: %u\n", pkt_end - pkt_cur);
+	if (set_len > MTU - sizeof(dnsflow_hdr) + 1) {
 		warnx("set too big, doesn't fit in MTU");
 		data_buf->db_len = 0;
 		return;
 	}
 	/* This set will fit in the remainder of this dnsflow pkt*/
-	if (set_len < pkt_end - pkt_cur) {
+	if (set_len < pkt_end - pkt_cur + 1) {
 		/* Start building new set. */
 		set_hdr = (struct dnsflow_set_hdr *)pkt_cur;
 		bzero(set_hdr, sizeof(struct dnsflow_set_hdr));
