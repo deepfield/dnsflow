@@ -927,11 +927,11 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	/* Estimate length of set to see if it fits in this pkt*/
 	set_len = sizeof(struct dnsflow_set_hdr);
 	int name_len_total = 0;
-	int names_count = 
+	uint8_t names_count = 
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
-	int ips_count = 
+	uint8_t ips_count = 
 		MIN(dns_data->num_ips, DNSFLOW_IPS_COUNT_MAX);
-	int ip6s_count = 
+	uint8_t ip6s_count = 
 		MIN(dns_data->num_ip6s, DNSFLOW_IPS_COUNT_MAX);
 	int j;
 	for (j = 0; j < names_count; j++) {
