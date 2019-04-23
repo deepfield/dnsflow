@@ -942,9 +942,8 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	int ip6s_len_total = ip6s_count * sizeof(struct in6_addr);
 	set_len += ips_len_total;
 	set_len += ip6s_len_total;
+
 	/* This set will not fit in any dnsflow pkt*/
-	_log("Estimated set length: %u\n", set_len);
-    _log("Remaining size in the pkt: %u\n", pkt_end - pkt_cur);
 	if (set_len > MTU - sizeof(dnsflow_hdr) + 1) {
 		warnx("set too big, doesn't fit in MTU");
 		data_buf->db_len = 0;
