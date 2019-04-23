@@ -883,7 +883,7 @@ dnsflow_pkt_send_data()
 		return;
 	}
 	if (data_buf->db_len >= MTU) {
-		_log("%d", data_buf->db_len);
+		_log("packet-exceeds-mtu: %d", data_buf->db_len);
 	}
 	data_buf->db_pkt_hdr.sequence_number = htonl(sequence_number++);
 	dnsflow_pkt_send(data_buf);
@@ -1017,7 +1017,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	}
 	/* This set will fit in the next dnsflow pkt*/
 	else {
-		_log("/* This set will fit in the next dnsflow pkt*/");
+		_log("next-set-wont-fit: this curr size %d, next set size %d", data_buf->db_len, set_len);
 		/* Send and reset data buffer len */
 		dnsflow_pkt_send_data();
 		/* Start a new packet*/
