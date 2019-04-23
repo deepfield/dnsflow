@@ -882,6 +882,9 @@ dnsflow_pkt_send_data()
 	if (data_buf->db_len == 0) {
 		return;
 	}
+	if (data_buf->db_len >= MTU) {
+		_log("%d", data_buf->db_len);
+	}
 	data_buf->db_pkt_hdr.sequence_number = htonl(sequence_number++);
 	dnsflow_pkt_send(data_buf);
 	data_buf->db_len = 0;
@@ -1003,15 +1006,24 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 			data_buf->db_len += sizeof(struct in6_addr);
 			pkt_cur = pkt_start + data_buf->db_len;
 		}
+
+		dnsflow_hdr->sets_count++;
+
+		if (data_buf->db_len >= DNSFLOW_PKT_TARGET_SIZE ||
+		    dnsflow_hdr->sets_count == DNSFLOW_SETS_COUNT_MAX) {
+			/* Send */
+			dnsflow_pkt_send_data();
+		}
 	}
-
-	dnsflow_hdr->sets_count++;
-
-	if (data_buf->db_len >= DNSFLOW_PKT_TARGET_SIZE ||
-	    dnsflow_hdr->sets_count == DNSFLOW_SETS_COUNT_MAX) {
-		/* Send */
+	/* This set will fit in the next dnsflow pkt*/
+	else {
+		_log("/* This set will fit in the next dnsflow pkt*/");
+		/* Send and reset data buffer len */
 		dnsflow_pkt_send_data();
+		/* Start a new packet*/
+		dnsflow_pkt_build(client_ip, client_ip6, resolver_ip, resolver_ip6, dns_data);
 	}
+
 }
 
 static void
