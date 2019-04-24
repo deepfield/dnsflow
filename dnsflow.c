@@ -105,7 +105,7 @@
 
 #define DNSFLOW_MAX_PARSE		255
 #define DNSFLOW_PKT_MAX_SIZE		65535
-#define MTU 					1500
+#define MTU 				1500
 #define DNSFLOW_PKT_TARGET_SIZE		1200
 #define DNSFLOW_VERSION			4
 #define DNSFLOW_PORT			5300
@@ -885,6 +885,7 @@ dnsflow_pkt_send_data()
 	if (data_buf->db_len >= MTU) {
 		_log("packet-exceeds-mtu: %d", data_buf->db_len);
 	}
+	_log("%d", data_buf->db_len);
 	data_buf->db_pkt_hdr.sequence_number = htonl(sequence_number++);
 	dnsflow_pkt_send(data_buf);
 	data_buf->db_len = 0;
@@ -913,7 +914,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	int				header_len = 0;
 	struct in_addr			*ip_ptr;
 	struct in6_addr			*ip6_ptr;
-	int 			set_len;
+	int 				set_len;
 	
 	dnsflow_hdr = &data_buf->db_pkt_hdr;
 	pkt_start = (char *)dnsflow_hdr;
@@ -929,6 +930,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 
 	/* Estimate length of set to see if it fits in this pkt*/
 	set_len = sizeof(struct dnsflow_set_hdr);
+	// Move declaration to top
 	int name_len_total = 0;
 	uint8_t names_count = 
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
@@ -949,7 +951,6 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	/* This set will not fit in any dnsflow pkt*/
 	if (set_len > MTU - sizeof(dnsflow_hdr) + 1) {
 		warnx("set too big, doesn't fit in MTU");
-		data_buf->db_len = 0;
 		return;
 	}
 	/* This set will fit in the remainder of this dnsflow pkt*/
