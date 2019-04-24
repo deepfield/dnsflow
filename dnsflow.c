@@ -215,6 +215,8 @@ struct jmirror_hdr {
 static uint32_t			sequence_number = 1;
 static struct dnsflow_buf	*data_buf = NULL;
 static time_t			last_send = 0;
+static uint32_t			oversize_pkt = 0;
+static uint32_t 		split_cnt = 0;
 
 static struct event		push_ev;
 static struct timeval		push_tv = {1, 0};
@@ -275,6 +277,8 @@ static void
 dnsflow_print_stats(struct dcap_stat *ds)
 {
 	_log("%u packets captured", ds->captured);
+	_log("%u packets oversized", oversize_pkt);
+	_log("%u set-boundary split happened", split_cnt)
 	if (ds->ps_valid) {
 		_log("%u packets received by filter", ds->ps_recv);
 		_log("%u packets dropped by kernel", ds->ps_drop);
@@ -885,7 +889,7 @@ dnsflow_pkt_send_data()
 	if (data_buf->db_len >= DNSFLOW_PKT_MAX_SIZE) {
 		_log("packet-exceeds-mtu: %d", data_buf->db_len);
 	}
-	_log("%d", data_buf->db_len);
+	//_log("%d", data_buf->db_len);
 	data_buf->db_pkt_hdr.sequence_number = htonl(sequence_number++);
 	dnsflow_pkt_send(data_buf);
 	data_buf->db_len = 0;
@@ -915,7 +919,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	struct in_addr			*ip_ptr;
 	struct in6_addr			*ip6_ptr;
 	int 				set_len;
-	
+	oversize_pkt++;
 	dnsflow_hdr = &data_buf->db_pkt_hdr;
 	pkt_start = (char *)dnsflow_hdr;
 	if (data_buf->db_len == 0) {
@@ -1018,7 +1022,8 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	}
 	/* This set will fit in the next dnsflow pkt*/
 	else {
-		_log("next-set-wont-fit: this curr size %d, next set size %d", data_buf->db_len, set_len);
+		//_log("next-set-wont-fit: this curr size %d, next set size %d", data_buf->db_len, set_len);
+		split_cnt++;
 		/* Send and reset data buffer len */
 		dnsflow_pkt_send_data();
 		/* Start a new packet*/
