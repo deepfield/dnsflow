@@ -278,7 +278,7 @@ dnsflow_print_stats(struct dcap_stat *ds)
 {
 	_log("%u packets captured", ds->captured);
 	_log("%u packets oversized", oversize_pkt);
-	_log("%u set-boundary split happened", split_cnt)
+	_log("%u set-boundary split happened", split_cnt);
 	if (ds->ps_valid) {
 		_log("%u packets received by filter", ds->ps_recv);
 		_log("%u packets dropped by kernel", ds->ps_drop);
@@ -919,7 +919,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	struct in_addr			*ip_ptr;
 	struct in6_addr			*ip6_ptr;
 	int 				set_len;
-	oversize_pkt++;
+
 	dnsflow_hdr = &data_buf->db_pkt_hdr;
 	pkt_start = (char *)dnsflow_hdr;
 	if (data_buf->db_len == 0) {
@@ -954,6 +954,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 
 	/* This set will not fit in any dnsflow pkt*/
 	if (set_len > DNSFLOW_PKT_MAX_SIZE - sizeof(dnsflow_hdr) + 1) {
+		oversize_pkt++;
 		warnx("set too big exceeding Ethernet MTU");
 		return;
 	}
