@@ -1138,6 +1138,9 @@ signal_cb(int signal, short event, void *arg)
 
 	switch (signal) {
 	case SIGINT:
+		_log("received SIGINT");
+		clean_exit(dcap);
+		break;
 	case SIGTERM:
 		_log("received exit signal: %d", signal);
 		clean_exit(dcap);	/* Doesn't return. */
