@@ -946,7 +946,6 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 
 	/* This set will not fit in any dnsflow pkt*/
 	if (set_len > DNSFLOW_PKT_MAX_SIZE - sizeof(dnsflow_hdr) + 1) {
-		warnx("set too big exceeding Ethernet MTU");
 		return;
 	}
 	/* This set will fit in the remainder of this dnsflow pkt*/
