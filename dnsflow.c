@@ -906,11 +906,13 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	struct dnsflow_hdr		*dnsflow_hdr;
 	struct dnsflow_set_hdr		*set_hdr;
 	char			        *pkt_start, *pkt_cur, *pkt_end, *names_start;
-	int				i;
+	int				i, j;
 	int				header_len = 0;
 	struct in_addr			*ip_ptr;
 	struct in6_addr			*ip6_ptr;
-	int 				set_len;
+	int 				set_len, ips_len_total, ip6s_len_total;
+	int 				name_len_total = 0;
+	uint8_t 			names_count, ips_count, ip6s_count;
 
 	dnsflow_hdr = &data_buf->db_pkt_hdr;
 	pkt_start = (char *)dnsflow_hdr;
@@ -926,21 +928,19 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 
 	/* Estimate length of set to see if it fits in this pkt*/
 	set_len = sizeof(struct dnsflow_set_hdr);
-	// Move declaration to top
-	int name_len_total = 0;
-	uint8_t names_count = 
+	
+	names_count = 
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
-	uint8_t ips_count = 
+	ips_count = 
 		MIN(dns_data->num_ips, DNSFLOW_IPS_COUNT_MAX);
-	uint8_t ip6s_count = 
+	ip6s_count = 
 		MIN(dns_data->num_ip6s, DNSFLOW_IPS_COUNT_MAX);
-	int j;
 	for (j = 0; j < names_count; j++) {
 		name_len_total += dns_data->name_lens[j];
 	}
 	set_len += name_len_total;
-	int ips_len_total = ips_count * sizeof(struct in_addr);
-	int ip6s_len_total = ip6s_count * sizeof(struct in6_addr);
+	ips_len_total = ips_count * sizeof(struct in_addr);
+	ip6s_len_total = ip6s_count * sizeof(struct in6_addr);
 	set_len += ips_len_total;
 	set_len += ip6s_len_total;
 
