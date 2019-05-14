@@ -104,7 +104,8 @@
 
 
 #define DNSFLOW_MAX_PARSE		255
-#define DNSFLOW_PKT_MAX_SIZE		65535
+#define DNSFLOW_PKT_BUF_SIZE		65535
+#define DNSFLOW_PKT_MAX_SIZE 		1500
 #define DNSFLOW_PKT_TARGET_SIZE		1200
 #define DNSFLOW_VERSION			4
 #define DNSFLOW_PORT			5300
@@ -154,7 +155,7 @@ struct dns_data_set {
 
 struct dnsflow_data_pkt {
 	/* Variable sized pkt, allocate maximum size when it's a data pkt. */
-	char				pkt[1]; /* DNSFLOW_PKT_MAX_SIZE */
+	char				pkt[1]; /* DNSFLOW_PKT_BUF_SIZE */
 };
 
 
@@ -905,11 +906,14 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	struct dnsflow_hdr		*dnsflow_hdr;
 	struct dnsflow_set_hdr		*set_hdr;
 	char			        *pkt_start, *pkt_cur, *pkt_end, *names_start;
-	int				i;
+	int				i, j;
 	int				header_len = 0;
 	struct in_addr			*ip_ptr;
 	struct in6_addr			*ip6_ptr;
-	
+	int 				set_len, ips_len_total, ip6s_len_total;
+	int 				name_len_total = 0;
+	uint8_t 			names_count, ips_count, ip6s_count;
+
 	dnsflow_hdr = &data_buf->db_pkt_hdr;
 	pkt_start = (char *)dnsflow_hdr;
 	if (data_buf->db_len == 0) {
@@ -922,69 +926,99 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 	pkt_cur = pkt_start + data_buf->db_len;
 	pkt_end = pkt_start + DNSFLOW_PKT_MAX_SIZE - 1;
 
-	/* Start building new set. */
-	set_hdr = (struct dnsflow_set_hdr *)pkt_cur;
-	bzero(set_hdr, sizeof(struct dnsflow_set_hdr));
-	/* XXX Not warning if we're truncating names, ips. */
-	if (client_ip) {
-		header_len = DNSFLOW_IP4_SET_HDR;
-		set_hdr->ip_vers = 4;
-		set_hdr->client_ip.client_ip4 = *client_ip;
-		set_hdr->resolver_ip.resolver_ip4 = *resolver_ip;
-	} else {
-		header_len = DNSFLOW_IP6_SET_HDR;
-		set_hdr->ip_vers = 6;
-		set_hdr->client_ip.client_ip6 = *client_ip6;
-		set_hdr->resolver_ip.resolver_ip6 = *resolver_ip6;
-	}
-	set_hdr->names_count =
+	/* Estimate length of set to see if it fits in this pkt*/
+	set_len = sizeof(struct dnsflow_set_hdr);
+	
+	names_count = 
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
-	set_hdr->ips_count =
+	ips_count = 
 		MIN(dns_data->num_ips, DNSFLOW_IPS_COUNT_MAX);
-	set_hdr->ip6s_count = 
+	ip6s_count = 
 		MIN(dns_data->num_ip6s, DNSFLOW_IPS_COUNT_MAX);
-	data_buf->db_len += header_len;
-	pkt_cur = pkt_start + data_buf->db_len;
+	for (j = 0; j < names_count; j++) {
+		name_len_total += dns_data->name_lens[j];
+	}
+	set_len += name_len_total;
+	ips_len_total = ips_count * sizeof(struct in_addr);
+	ip6s_len_total = ip6s_count * sizeof(struct in6_addr);
+	set_len += ips_len_total;
+	set_len += ip6s_len_total;
 
-	names_start = pkt_cur;
-	for (i = 0; i < set_hdr->names_count; i++) {
-		if (dns_data->name_lens[i] > pkt_end - pkt_cur) {
-			/* Not enough room. Shouldn't happen. */
-			_log("Pkt create error");
-			data_buf->db_len = 0;
-			return;
+	/* This set will not fit in any dnsflow pkt*/
+	if (set_len > DNSFLOW_PKT_MAX_SIZE - sizeof(dnsflow_hdr) + 1) {
+		return;
+	}
+	/* This set will fit in the remainder of this dnsflow pkt*/
+	if (set_len < pkt_end - pkt_cur + 1) {
+		/* Start building new set. */
+		set_hdr = (struct dnsflow_set_hdr *)pkt_cur;
+		bzero(set_hdr, sizeof(struct dnsflow_set_hdr));
+		/* XXX Not warning if we're truncating names, ips. */
+		if (client_ip) {
+			header_len = DNSFLOW_IP4_SET_HDR;
+			set_hdr->ip_vers = 4;
+			set_hdr->client_ip.client_ip4 = *client_ip;
+			set_hdr->resolver_ip.resolver_ip4 = *resolver_ip;
+		} else {
+			header_len = DNSFLOW_IP6_SET_HDR;
+			set_hdr->ip_vers = 6;
+			set_hdr->client_ip.client_ip6 = *client_ip6;
+			set_hdr->resolver_ip.resolver_ip6 = *resolver_ip6;
 		}
-		memcpy(pkt_cur, dns_data->names[i], dns_data->name_lens[i]);
-		data_buf->db_len += dns_data->name_lens[i];
+		set_hdr->names_count = names_count;
+		set_hdr->ips_count = ips_count;
+		set_hdr->ip6s_count = ip6s_count;
+		data_buf->db_len += header_len;
 		pkt_cur = pkt_start + data_buf->db_len;
-	}
-	while (data_buf->db_len % 4 != 0) {
-		/* Pad to word boundary. */
-		pkt_start[data_buf->db_len++] = '\0';
-	}
-	pkt_cur = pkt_start + data_buf->db_len;
-	set_hdr->names_len = htons(pkt_cur - names_start);
 
-	for (i = 0; i < set_hdr->ips_count; i++) {
-		ip_ptr = (struct in_addr *)pkt_cur;
-		*ip_ptr = dns_data->ips[i];
-		data_buf->db_len += sizeof(struct in_addr);
+		names_start = pkt_cur;
+		for (i = 0; i < set_hdr->names_count; i++) {
+			if (dns_data->name_lens[i] > pkt_end - pkt_cur) {
+				/* Not enough room. Shouldn't happen. */
+				_log("Pkt create error");
+				data_buf->db_len = 0;
+				return;
+			}
+			memcpy(pkt_cur, dns_data->names[i], dns_data->name_lens[i]);
+			data_buf->db_len += dns_data->name_lens[i];
+			pkt_cur = pkt_start + data_buf->db_len;
+		}
+		while (data_buf->db_len % 4 != 0) {
+			/* Pad to word boundary. */
+			pkt_start[data_buf->db_len++] = '\0';
+		}
 		pkt_cur = pkt_start + data_buf->db_len;
-	}
-	for (i = 0; i < set_hdr->ip6s_count; i++) {
-		ip6_ptr = (struct in6_addr *)pkt_cur;
-		*ip6_ptr = dns_data->ip6s[i];
-		data_buf->db_len += sizeof(struct in6_addr);
-		pkt_cur = pkt_start + data_buf->db_len;
-	}
-    
-	dnsflow_hdr->sets_count++;
+		set_hdr->names_len = htons(pkt_cur - names_start);
 
-	if (data_buf->db_len >= DNSFLOW_PKT_TARGET_SIZE ||
-	    dnsflow_hdr->sets_count == DNSFLOW_SETS_COUNT_MAX) {
-		/* Send */
+		for (i = 0; i < set_hdr->ips_count; i++) {
+			ip_ptr = (struct in_addr *)pkt_cur;
+			*ip_ptr = dns_data->ips[i];
+			data_buf->db_len += sizeof(struct in_addr);
+			pkt_cur = pkt_start + data_buf->db_len;
+		}
+		for (i = 0; i < set_hdr->ip6s_count; i++) {
+			ip6_ptr = (struct in6_addr *)pkt_cur;
+			*ip6_ptr = dns_data->ip6s[i];
+			data_buf->db_len += sizeof(struct in6_addr);
+			pkt_cur = pkt_start + data_buf->db_len;
+		}
+
+		dnsflow_hdr->sets_count++;
+
+		if (data_buf->db_len >= DNSFLOW_PKT_TARGET_SIZE ||
+		    dnsflow_hdr->sets_count == DNSFLOW_SETS_COUNT_MAX) {
+			/* Send */
+			dnsflow_pkt_send_data();
+		}
+	}
+	/* This set will fit in the next dnsflow pkt*/
+	else {
+		/* Send and reset data buffer len */
 		dnsflow_pkt_send_data();
+		/* Start a new packet*/
+		dnsflow_pkt_build(client_ip, client_ip6, resolver_ip, resolver_ip6, dns_data);
 	}
+
 }
 
 static void
@@ -1339,7 +1373,7 @@ main(int argc, char *argv[])
 
 	/* B/c of the union, this allocates more than max for the pkt, but
 	 * not a big deal. */
-	data_buf = calloc(1, sizeof(struct dnsflow_buf) + DNSFLOW_PKT_MAX_SIZE);
+	data_buf = calloc(1, sizeof(struct dnsflow_buf) + DNSFLOW_PKT_BUF_SIZE);
 	data_buf->db_type = DNSFLOW_DATA;
 
 	/* Pcap/event loop */
