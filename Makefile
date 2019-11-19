@@ -29,7 +29,7 @@ ubuntu-uninstall: uninstall
 	@rm -v /etc/default/dnsflow
 
 install: dnsflow
-	@mkdir $(DESTDIR)/sbin/
+	@mkdir -p $(DESTDIR)/sbin/
 	@install -cv dnsflow $(DESTDIR)/sbin/
 
 ubuntu-install: install
