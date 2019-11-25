@@ -1,4 +1,5 @@
 OS = $(shell uname)
+DESTDIR=/usr/local/
 
 CC = gcc -g -L/usr/lib -Wall -O3 -D_BSD_SOURCE -I/usr/local/include/ -L/usr/local/lib/ 
 
@@ -28,7 +29,7 @@ ubuntu-uninstall: uninstall
 	@rm -v /etc/default/dnsflow
 
 install: dnsflow
-	@mkdir $(DESTDIR)/sbin/
+	@mkdir -p $(DESTDIR)/sbin/
 	@install -cv dnsflow $(DESTDIR)/sbin/
 
 ubuntu-install: install
