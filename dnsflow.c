@@ -63,6 +63,7 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/sysinfo.h>
 #if __linux__
 #include <sys/prctl.h>
 #endif
@@ -77,7 +78,6 @@
 #include <unistd.h>
 #include <time.h>
 #include <err.h>
-#include <assert.h>
 
 #include <arpa/inet.h>
 #include <netinet/ip.h>
@@ -340,12 +340,22 @@ check_parent_setup(struct dcap *dcap)
 
 /* Returns the proc number for this process. The parent is always 1. */
 static int
-mproc_fork(int num_procs)
+mproc_fork(int num_procs, int allow_cpu_overload)
 {
 	int	proc_i;
 	pid_t	pid;
 
-	assert(num_procs <= MAX_MPROC_CHILDREN);
+	if ((num_procs < 1) || (num_procs > MAX_MPROC_CHILDREN)) {
+		errx(1, "num_procs (%d) is not in range [1, %d]", num_procs, MAX_MPROC_CHILDREN);
+	}
+	if (!allow_cpu_overload) {
+		if (num_procs > get_nprocs()) {
+			errx(1, "num_procs (%d) is more than "
+			     "the number of available processors (%d).\n"
+			     "This can degrade performance. Use -o to disable this check.",
+			     num_procs, get_nprocs());
+		}
+	}
 
 	/* proc_i is 1-based. 1 is parent; start at 2. */
 	for (proc_i = 2; proc_i <= num_procs; proc_i++) {
@@ -373,7 +383,7 @@ mproc_fork(int num_procs)
  * proc_i and num_procs use 1-based numbering.
  * */
 static char *
-build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns)
+build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, int enable_checksum_mproc_filter)
 {
 	/* Note: according to pcap-filter(7), udp offsets only work for ipv4.
 	 * (Would have to use ip6 offsets.) */
@@ -1167,9 +1177,14 @@ usage(void)
 	fprintf(stderr, "\t[-Y] (add mDNS port to filter)\n");
 	/* Output options */
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
+	/* new improved ipv4 checksum-based filter */
+	fprintf(stderr, "\t[-c] (use ipv4 checksum for multi-proc filter, use with -M)\n");
+	/* allow overloading the system (more procs than available cpus) */
+	fprintf(stderr, "\t[-o] (allow overloading the system, "
+		"use with -M if you know what you are doing)\n");
 
 	fprintf(stderr, "\n  Default filter: %s\n",
-			build_pcap_filter(0, 1, 1, 0));
+		build_pcap_filter(0, 1, 1, 0, 0));
 
 	exit(1);
 }
@@ -1185,12 +1200,20 @@ main(int argc, char *argv[])
 	struct sockaddr_in	*so_addr = NULL;
 	int			encap_offset = 0;
 	int			enable_mdns = 0;
+	int			enable_checksum_mproc_filter = 0;
+	int			allow_cpu_overload = 0;
 	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
 	int			is_child = 0;
 	uint16_t		sample_rate = 0;
 
-	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Y:v:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Yv:h:co")) != -1) {
 		switch (c) {
+		case 'c':
+			enable_checksum_mproc_filter = 1;
+			break;
+		case 'o':
+			allow_cpu_overload = 1;
+			break;
 		case 'i':
 			intf_name = optarg;
 			break;
@@ -1280,7 +1303,7 @@ main(int argc, char *argv[])
 		if (pcap_file_write != NULL) {
 			errx(1, "can't use -w and -M together");
 		}
-		if ((proc_i = mproc_fork(auto_n_procs)) != 1) {
+		if ((proc_i = mproc_fork(auto_n_procs, allow_cpu_overload)) != 1) {
 			is_child = 1;
 		}
 		n_procs = auto_n_procs;
@@ -1302,7 +1325,7 @@ main(int argc, char *argv[])
 
 	if (filter == NULL) {
 		filter = build_pcap_filter(encap_offset, proc_i, n_procs,
-				enable_mdns);
+					   enable_mdns, enable_checksum_mproc_filter);
 	}
 
 	/* Init pcap */
