@@ -473,15 +473,15 @@ char *
 ts_format(struct timeval *ts)
 {
 	int		sec, usec;
-        static char	buf[256];
+	static char	buf[256];
 
        	sec = ts->tv_sec % 86400;
 	usec = ts->tv_usec;
 
-        snprintf(buf, sizeof(buf), "%02d:%02d:%02d.%06u",
-               sec / 3600, (sec % 3600) / 60, sec % 60, usec);
+	snprintf(buf, sizeof(buf), "%02d:%02d:%02d.%06u",
+		 sec / 3600, (sec % 3600) / 60, sec % 60, usec);
 
-        return buf;
+	return buf;
 }
 
 /**
