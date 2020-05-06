@@ -66,6 +66,7 @@
 #include <sys/sysinfo.h>
 #if __linux__
 #include <sys/prctl.h>
+#include <linux/version.h>
 #endif
 #include <inttypes.h>
 #include <errno.h>
@@ -442,17 +443,50 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, 
 		 * Using the client ip as the load balance key. Useful to keep
 		 * each client in same stream. Another possibility would be
 		 * the udp checksum, assuming it's set.  */
-		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
-			 "(ip and %s and (ip[%d:4] - ip[%d:4] / %u * %u = %u)) or ",
-			 dns_resp_filter, dst_ip_offset + ip_offset,
-			 dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
-		cp = multi_proc_filter;
-		cp += strlen(multi_proc_filter);
+		if (enable_checksum_mproc_filter) {
+#if __linux__ && (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
+			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
+				 "(ip and (%s) and (((ip[%d:4] %% %u) + (udp[%d:2] %% %u)) %% %u = %u)) or ",
+				 dns_resp_filter,
+				 dst_ip_offset + ip_offset, num_procs,
+				 checksum_udp_offset, num_procs,
+				 num_procs, proc_i - 1);
+#else
+			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
+				 "(ip and (%s) and (((ip[%d:4] - ip[%d:4]/%u*%u) + (udp[%d:2] - udp[%d:2]/%u*%u)) - ((ip[%d:4] - ip[%d:4]/%u*%u) + (udp[%d:2] - udp[%d:2]/%u*%u))/%u*%u = %u)) or ",
+				 dns_resp_filter,
+				 dst_ip_offset + ip_offset, dst_ip_offset + ip_offset, num_procs, num_procs,
+				 checksum_udp_offset, checksum_udp_offset, num_procs, num_procs,
+				 dst_ip_offset + ip_offset, dst_ip_offset + ip_offset, num_procs, num_procs,
+				 checksum_udp_offset, checksum_udp_offset, num_procs, num_procs,
+				 num_procs, num_procs, proc_i - 1);
+#endif
+			cp = multi_proc_filter;
+			cp += strlen(multi_proc_filter);
 
-		snprintf(cp, sizeof(multi_proc_filter) - (cp - multi_proc_filter),
-			 "(ip6 and %s and (ip6[%d:2] - ip6[%d:2] / %u * %u = %u))",
-			 dns_resp_filter, ip6_offset + checksum_udp_offset, 
-			 ip6_offset + checksum_udp_offset, num_procs, num_procs, proc_i - 1);
+#if __linux__ && (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
+			snprintf(cp, sizeof(multi_proc_filter) - (cp - multi_proc_filter),
+				 "(ip6 and %s and (ip6[%d:2] %% %u = %u))",
+				 dns_resp_filter, ip6_offset + checksum_udp_offset, num_procs, proc_i - 1);
+#else
+			snprintf(cp, sizeof(multi_proc_filter) - (cp - multi_proc_filter),
+				 "(ip6 and %s and (ip6[%d:2] - ip6[%d:2] / %u * %u = %u))",
+				 dns_resp_filter, ip6_offset + checksum_udp_offset,
+				 ip6_offset + checksum_udp_offset, num_procs, num_procs, proc_i - 1);
+#endif
+		} else {
+			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
+				 "(ip and %s and (ip[%d:4] - ip[%d:4] / %u * %u = %u)) or ",
+				 dns_resp_filter, dst_ip_offset + ip_offset,
+				 dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
+			cp = multi_proc_filter;
+			cp += strlen(multi_proc_filter);
+
+			snprintf(cp, sizeof(multi_proc_filter) - (cp - multi_proc_filter),
+				 "(ip6 and %s and (ip6[%d:2] - ip6[%d:2] / %u * %u = %u))",
+				 dns_resp_filter, ip6_offset + checksum_udp_offset,
+				 ip6_offset + checksum_udp_offset, num_procs, num_procs, proc_i - 1);
+		}
 	} else {
 		/* Just copy base dns filter. */
 		snprintf(multi_proc_filter, sizeof(multi_proc_filter), "%s", dns_resp_filter);
