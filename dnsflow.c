@@ -383,7 +383,7 @@ mproc_fork(int num_procs, int allow_cpu_overload)
  * proc_i and num_procs use 1-based numbering.
  * */
 static char *
-build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, int enable_checksum_mproc_filter)
+build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, int enable_ipv4_checksum_mproc_filter)
 {
 	/* Note: according to pcap-filter(7), udp offsets only work for ipv4.
 	 * (Would have to use ip6 offsets.) */
@@ -435,14 +435,35 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, 
 
 	if (num_procs > 1) {
 		char *cp = NULL;
-		/* Add multi-proc filter.
-		 * Select based on mod of client ip.  Probably never a problem,
-		 * but doing offset from ip, so ip options will break view into
-		 * encap.
-		 * Using the client ip as the load balance key. Useful to keep
-		 * each client in same stream. Another possibility would be
-		 * the udp checksum, assuming it's set.  */
-		if (enable_checksum_mproc_filter) {
+		/* Multi-process filter:
+		 *  - For ip6, select based on modulo of udp checksum. Note that
+		 *    the 'udp' shorthand does not work in the ip6 context for the
+		 *    pcap filter language, so the checksum is found by offsetting
+		 *    appropriately from the ip6 accessor.
+		 *  - For ip4, since the udp checksum is optional (0 when not computed),
+		 *    the default filter selects based on modulo of client ip,
+		 *    which is the dst ip for dns responses. It does so using offset
+		 *    from ip, so ip options will break view into encap. Using the client
+		 *    ip as the load balance key may be useful to keep each client
+		 *    in same stream. Optionally, one can activate an ip4 filter
+		 *    that selects based on module of udp checksum when it is available,
+		 *    falling back to default ip4 filter when it is not.
+		 */
+		/* Note about performance:
+		 *  - We avoid explicit use of the % operator, and instead
+		 *    express x % y as (x - x/y*y) for integers x, y. According
+		 *    to the pcap-filter(7) man page, the % and ^ operators
+		 *    have limited support in some kernels (older or non-linux),
+		 *    when can have severe performance impacts.
+		 */
+		if (!enable_ipv4_checksum_mproc_filter) {
+			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
+				 "(ip and (%s) and ((ip[%d:4] - ip[%d:4]/%u*%u) = %u)) or ",
+				 dns_resp_filter, dst_ip_offset + ip_offset,
+				 dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
+			cp = multi_proc_filter;
+			cp += strlen(multi_proc_filter);
+		} else {
 			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
 				 "(ip and (%s) and (((udp[%d:2] != 0) and ((udp[%d:2] - udp[%d:2]/%u*%u) = %u)) or ((udp[%d:2] = 0) and ((ip[%d:4] - ip[%d:4]/%u*%u) = %u)))) or ",
 				 dns_resp_filter,
@@ -450,16 +471,9 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, 
 				 checksum_udp_offset, dst_ip_offset + ip_offset, dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
 			cp = multi_proc_filter;
 			cp += strlen(multi_proc_filter);
-		} else {
-			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
-				 "(ip and %s and (ip[%d:4] - ip[%d:4] / %u * %u = %u)) or ",
-				 dns_resp_filter, dst_ip_offset + ip_offset,
-				 dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
-			cp = multi_proc_filter;
-			cp += strlen(multi_proc_filter);
 		}
 		snprintf(cp, sizeof(multi_proc_filter) - (cp - multi_proc_filter),
-			 "(ip6 and %s and (ip6[%d:2] - ip6[%d:2] / %u * %u = %u))",
+			 "(ip6 and (%s) and ((ip6[%d:2] - ip6[%d:2]/%u*%u) = %u))",
 			 dns_resp_filter, ip6_offset + checksum_udp_offset,
 			 ip6_offset + checksum_udp_offset, num_procs, num_procs, proc_i - 1);
 	} else {
@@ -924,7 +938,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 {
 	struct dnsflow_hdr		*dnsflow_hdr;
 	struct dnsflow_set_hdr		*set_hdr;
-	char			        *pkt_start, *pkt_cur, *pkt_end, *names_start;
+	char				*pkt_start, *pkt_cur, *pkt_end, *names_start;
 	int				i, j;
 	int				header_len = 0;
 	struct in_addr			*ip_ptr;
@@ -947,7 +961,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 
 	/* Estimate length of set to see if it fits in this pkt*/
 	set_len = sizeof(struct dnsflow_set_hdr);
-	
+
 	names_count = 
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
 	ips_count = 
@@ -1209,7 +1223,7 @@ main(int argc, char *argv[])
 	struct sockaddr_in	*so_addr = NULL;
 	int			encap_offset = 0;
 	int			enable_mdns = 0;
-	int			enable_checksum_mproc_filter = 0;
+	int			enable_ipv4_checksum_mproc_filter = 0;
 	int			allow_cpu_overload = 0;
 	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
 	int			is_child = 0;
@@ -1218,7 +1232,7 @@ main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Yv:h:co")) != -1) {
 		switch (c) {
 		case 'c':
-			enable_checksum_mproc_filter = 1;
+			enable_ipv4_checksum_mproc_filter = 1;
 			break;
 		case 'o':
 			allow_cpu_overload = 1;
@@ -1334,7 +1348,7 @@ main(int argc, char *argv[])
 
 	if (filter == NULL) {
 		filter = build_pcap_filter(encap_offset, proc_i, n_procs,
-					   enable_mdns, enable_checksum_mproc_filter);
+					   enable_mdns, enable_ipv4_checksum_mproc_filter);
 	}
 
 	/* Init pcap */
