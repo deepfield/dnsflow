@@ -451,10 +451,10 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, 
 		 */
 		/* Note about performance:
 		 *  - We avoid explicit use of the % operator, and instead
-		 *    express x % y as (x - x/y*y) for integers x, y. According
+		 *    express (x % y) as (x - x/y*y) for integers x, y. According
 		 *    to the pcap-filter(7) man page, the % and ^ operators
 		 *    have limited support in some kernels (older or non-linux),
-		 *    when can have severe performance impacts.
+		 *    which can have severe performance impacts.
 		 */
 		if (!enable_ipv4_checksum_mproc_filter) {
 			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
