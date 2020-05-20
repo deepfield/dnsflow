@@ -7,8 +7,9 @@
  * [Build DNSFlow](#building-dnsflow-daemon)
  * [Running](#running)
  * [Running as an Upstart job](#running-as-an-upstart-job)
+ * [High-Flow Multi-Process Performance](#high-flow-multi-process-performance)
 
-## Running 
+## Running
 After you get it built, start the daemon that will forward the DNS (to the localhost in this case):
 ```
 ./dnsflow -i eth0 -u 127.0.0.1 -P /tmp/dnsflow.pid
@@ -30,7 +31,7 @@ Read the packets being sent to the local host:
 ```
 
 ## Running as an Upstart job
-Running as an Upstart job requires DNSFlow to be installed on a Ubuntu/Debian deployment. These commands should be run with root priviledges.
+Running as an Upstart job requires DNSFlow to be installed on a Ubuntu/Debian deployment. These commands should be run with root privileges.
 
 Starting DNSFlow.
 ```
@@ -52,10 +53,51 @@ Command line options, pid file location, and DNSFlow binary location can be spec
 /etc/default/dnsflow
 ```
 
+## High-Flow Multi-Process Performance
+
+When running in multi-process mode (using -M <nprocs>), it is
+important to consider both the hardware capabilities of the machine
+you are running on and the characteristics of the processes that are
+running. For this application, although processes must wait for
+packets to arrive over the network, in high-flow situations these
+dnsflow processes are CPU hungry. Thus, in the common case of running
+on multi-core, shared-memory, commodity-hardware machine (e.g., 32
+cores, 64 GB of RAM), it does not make sense to set the number of
+processes to more than the number of CPUs. Typically, the ideal number
+of processes is roughly **half of the number of CPUs**, as the CPUs
+themselves also share hardware resources. This can be set
+automatically with `-M 0`.
+
+Along with the number processes, the share of packets consumed by each
+process is important. The default multi-processing filter distributes
+packets based on a modulo of the DNS response destination for ipv4
+addresses, and the UDP checksum for ipv6 DNS responses. This can be
+good enough in moderate flow situations, but may result in packets
+being lost if flow is high and not evenly distributed over client ipv4
+addresses. The `-c` option activates a new multi-process filter that
+utilizes the ipv4 checksum when it is available, falling back to the
+default ipv4 filter when it is not. This balancing mode tends to
+provide better load balance over many processes, which may result in
+fewer packets being dropped.
+
+If you would like automatically apply the recommended high-performance
+settings discussed above, launch the application with the following
+two additional options:
+```
+sudo ./dnsflow .. -c -M 0
+```
+
+If you suspect additional speedup is possible by utilizing more than
+half of the available CPUs, we recommend you verify this by examining
+the total time to process a large pcap file under different -M
+settings on the target machine. A good procedure is to start with a
+small setting for M, then doubling it until the total processing time no
+longer decreases.
+
 ## Install DNSFlow Reader Dependencies
 The dnsflow reader is a python script with the following dependencies:
 
-Install the python package installer pip (via apt on ubuntu).
+Install the python package installer pip (via apt on Ubuntu).
 ```
 sudo apt-get install python-pip
 ```
@@ -143,4 +185,3 @@ the CentOS / RedHat 7 RPM
    edit destination IP and interface
 > sudo service dnsflow start
 ```
-   
