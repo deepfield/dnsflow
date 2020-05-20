@@ -80,9 +80,9 @@ default ipv4 filter when it is not. This balancing mode tends to
 provide better load balance over many processes, which may result in
 fewer packets being dropped.
 
-If you would like automatically apply the recommended high-performance
-settings discussed above, launch the application with the following
-two additional options:
+If you would like to automatically apply the recommended
+high-performance settings discussed above, launch the application with
+the following two additional options:
 ```
 sudo ./dnsflow .. -c -M 0
 ```
@@ -91,8 +91,8 @@ If you suspect additional speedup is possible by utilizing more than
 half of the available CPUs, we recommend you verify this by examining
 the total time to process a large pcap file under different -M
 settings on the target machine. A good procedure is to start with a
-small setting for M, then doubling it until the total processing time no
-longer decreases.
+small setting for M, and then double it until the total processing
+time no longer decreases.
 
 ## Install DNSFlow Reader Dependencies
 The dnsflow reader is a python script with the following dependencies:
