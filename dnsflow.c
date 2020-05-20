@@ -340,21 +340,22 @@ check_parent_setup(struct dcap *dcap)
 
 /* Returns the proc number for this process. The parent is always 1. */
 static int
-mproc_fork(int num_procs, int allow_cpu_overload)
+mproc_fork(int num_procs)
 {
 	int	proc_i;
 	pid_t	pid;
 
 	if ((num_procs < 1) || (num_procs > MAX_MPROC_CHILDREN)) {
-		errx(1, "num_procs (%d) is not in range [1, %d]", num_procs, MAX_MPROC_CHILDREN);
+		errx(1, "num_procs (%d) is not in range [1, %d]. "
+		     "Recompile dnsflow.c with a larger value for "
+		     "MAX_MPROC_CHILDREN to utilize more processes.",
+		     num_procs, MAX_MPROC_CHILDREN);
 	}
-	if (!allow_cpu_overload) {
-		if (num_procs > get_nprocs()) {
-			errx(1, "num_procs (%d) is more than "
-			     "the number of available processors (%d).\n"
-			     "This can degrade performance. Use -o to disable this check.",
-			     num_procs, get_nprocs());
-		}
+	if (num_procs > get_nprocs()) {
+		errx(1, "num_procs (%d) is more than "
+		     "the number of available processors (%d). "
+		     "This degrades performance, so it is not allowed.",
+		     num_procs, get_nprocs());
 	}
 
 	/* proc_i is 1-based. 1 is parent; start at 2. */
@@ -1202,10 +1203,6 @@ usage(void)
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
 	/* new improved ipv4 checksum-based filter */
 	fprintf(stderr, "\t[-c] (use ipv4 checksum for multi-proc filter, use with -M)\n");
-	/* allow overloading the system (more procs than available cpus) */
-	fprintf(stderr, "\t[-o] (allow overloading the system, "
-		"use with -M if you know what you are doing)\n");
-
 	fprintf(stderr, "\n  Default filter: %s\n",
 		build_pcap_filter(0, 1, 1, 0, 0));
 
@@ -1224,18 +1221,14 @@ main(int argc, char *argv[])
 	int			encap_offset = 0;
 	int			enable_mdns = 0;
 	int			enable_ipv4_checksum_mproc_filter = 0;
-	int			allow_cpu_overload = 0;
 	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
 	int			is_child = 0;
 	uint16_t		sample_rate = 0;
 
-	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Yv:h:co")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Yv:h:c")) != -1) {
 		switch (c) {
 		case 'c':
 			enable_ipv4_checksum_mproc_filter = 1;
-			break;
-		case 'o':
-			allow_cpu_overload = 1;
 			break;
 		case 'i':
 			intf_name = optarg;
@@ -1262,9 +1255,15 @@ main(int argc, char *argv[])
 			break;
 		case 'M':
 			auto_n_procs = atoi(optarg);
+			// automatically set to half of CPUs if desired
 			if (auto_n_procs == 0) {
-				errx(1, "invalid multiproc option -- %s",
-						optarg);
+				auto_n_procs = MAX(1, get_nprocs()/2);
+				if (auto_n_procs > MAX_MPROC_CHILDREN) {
+					warnx("Reducing num procs (%d) to static limit defined by MAX_MPROC_CHILDREN (%d). "
+					      "Recompile dnsflow.c with a larger value for MAX_MPROC_CHILDREN to utilize "
+					      "more processes.", auto_n_procs, MAX_MPROC_CHILDREN);
+					auto_n_procs = MAX_MPROC_CHILDREN;
+				}
 			}
 			break;
 		case 'p':
@@ -1326,7 +1325,7 @@ main(int argc, char *argv[])
 		if (pcap_file_write != NULL) {
 			errx(1, "can't use -w and -M together");
 		}
-		if ((proc_i = mproc_fork(auto_n_procs, allow_cpu_overload)) != 1) {
+		if ((proc_i = mproc_fork(auto_n_procs)) != 1) {
 			is_child = 1;
 		}
 		n_procs = auto_n_procs;
