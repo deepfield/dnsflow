@@ -63,6 +63,7 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/sysinfo.h>
 #if __linux__
 #include <sys/prctl.h>
 #endif
@@ -77,7 +78,6 @@
 #include <unistd.h>
 #include <time.h>
 #include <err.h>
-#include <assert.h>
 
 #include <arpa/inet.h>
 #include <netinet/ip.h>
@@ -345,7 +345,18 @@ mproc_fork(int num_procs)
 	int	proc_i;
 	pid_t	pid;
 
-	assert(num_procs <= MAX_MPROC_CHILDREN);
+	if ((num_procs < 1) || (num_procs > MAX_MPROC_CHILDREN)) {
+		errx(1, "num_procs (%d) is not in range [1, %d]. "
+		     "Recompile dnsflow.c with a larger value for "
+		     "MAX_MPROC_CHILDREN to utilize more processes.",
+		     num_procs, MAX_MPROC_CHILDREN);
+	}
+	if (num_procs > get_nprocs()) {
+		errx(1, "num_procs (%d) is more than "
+		     "the number of available processors (%d). "
+		     "This degrades performance, so it is not allowed.",
+		     num_procs, get_nprocs());
+	}
 
 	/* proc_i is 1-based. 1 is parent; start at 2. */
 	for (proc_i = 2; proc_i <= num_procs; proc_i++) {
@@ -373,7 +384,7 @@ mproc_fork(int num_procs)
  * proc_i and num_procs use 1-based numbering.
  * */
 static char *
-build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns)
+build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, int enable_ipv4_checksum_mproc_filter)
 {
 	/* Note: according to pcap-filter(7), udp offsets only work for ipv4.
 	 * (Would have to use ip6 offsets.) */
@@ -425,23 +436,46 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns)
 
 	if (num_procs > 1) {
 		char *cp = NULL;
-		/* Add multi-proc filter.
-		 * Select based on mod of client ip.  Probably never a problem,
-		 * but doing offset from ip, so ip options will break view into
-		 * encap.
-		 * Using the client ip as the load balance key. Useful to keep
-		 * each client in same stream. Another possibility would be
-		 * the udp checksum, assuming it's set.  */
-		snprintf(multi_proc_filter, sizeof(multi_proc_filter),
-			 "(ip and %s and (ip[%d:4] - ip[%d:4] / %u * %u = %u)) or ",
-			 dns_resp_filter, dst_ip_offset + ip_offset,
-			 dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
-		cp = multi_proc_filter;
-		cp += strlen(multi_proc_filter);
-
+		/* Multi-process filter:
+		 *  - For ip6, select based on modulo of udp checksum. Note that
+		 *    the 'udp' shorthand does not work in the ip6 context for the
+		 *    pcap filter language, so the checksum is found by offsetting
+		 *    appropriately from the ip6 accessor.
+		 *  - For ip4, since the udp checksum is optional (0 when not computed),
+		 *    the default filter selects based on modulo of client ip,
+		 *    which is the dst ip for dns responses. It does so using offset
+		 *    from ip, so ip options will break view into encap. Using the client
+		 *    ip as the load balance key may be useful to keep each client
+		 *    in same stream. Optionally, one can activate an ip4 filter
+		 *    that selects based on module of udp checksum when it is available,
+		 *    falling back to default ip4 filter when it is not.
+		 */
+		/* Note about performance:
+		 *  - We avoid explicit use of the % operator, and instead
+		 *    express (x % y) as (x - x/y*y) for integers x, y. According
+		 *    to the pcap-filter(7) man page, the % and ^ operators
+		 *    have limited support in some kernels (older or non-linux),
+		 *    which can have severe performance impacts.
+		 */
+		if (!enable_ipv4_checksum_mproc_filter) {
+			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
+				 "(ip and (%s) and ((ip[%d:4] - ip[%d:4]/%u*%u) = %u)) or ",
+				 dns_resp_filter, dst_ip_offset + ip_offset,
+				 dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
+			cp = multi_proc_filter;
+			cp += strlen(multi_proc_filter);
+		} else {
+			snprintf(multi_proc_filter, sizeof(multi_proc_filter),
+				 "(ip and (%s) and (((udp[%d:2] != 0) and ((udp[%d:2] - udp[%d:2]/%u*%u) = %u)) or ((udp[%d:2] = 0) and ((ip[%d:4] - ip[%d:4]/%u*%u) = %u)))) or ",
+				 dns_resp_filter,
+				 checksum_udp_offset, checksum_udp_offset, checksum_udp_offset, num_procs, num_procs, proc_i - 1,
+				 checksum_udp_offset, dst_ip_offset + ip_offset, dst_ip_offset + ip_offset, num_procs, num_procs, proc_i - 1);
+			cp = multi_proc_filter;
+			cp += strlen(multi_proc_filter);
+		}
 		snprintf(cp, sizeof(multi_proc_filter) - (cp - multi_proc_filter),
-			 "(ip6 and %s and (ip6[%d:2] - ip6[%d:2] / %u * %u = %u))",
-			 dns_resp_filter, ip6_offset + checksum_udp_offset, 
+			 "(ip6 and (%s) and ((ip6[%d:2] - ip6[%d:2]/%u*%u) = %u))",
+			 dns_resp_filter, ip6_offset + checksum_udp_offset,
 			 ip6_offset + checksum_udp_offset, num_procs, num_procs, proc_i - 1);
 	} else {
 		/* Just copy base dns filter. */
@@ -463,15 +497,15 @@ char *
 ts_format(struct timeval *ts)
 {
 	int		sec, usec;
-        static char	buf[256];
+	static char	buf[256];
 
        	sec = ts->tv_sec % 86400;
 	usec = ts->tv_usec;
 
-        snprintf(buf, sizeof(buf), "%02d:%02d:%02d.%06u",
-               sec / 3600, (sec % 3600) / 60, sec % 60, usec);
+	snprintf(buf, sizeof(buf), "%02d:%02d:%02d.%06u",
+		 sec / 3600, (sec % 3600) / 60, sec % 60, usec);
 
-        return buf;
+	return buf;
 }
 
 /**
@@ -905,7 +939,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 {
 	struct dnsflow_hdr		*dnsflow_hdr;
 	struct dnsflow_set_hdr		*set_hdr;
-	char			        *pkt_start, *pkt_cur, *pkt_end, *names_start;
+	char				*pkt_start, *pkt_cur, *pkt_end, *names_start;
 	int				i, j;
 	int				header_len = 0;
 	struct in_addr			*ip_ptr;
@@ -928,7 +962,7 @@ dnsflow_pkt_build(struct in_addr* client_ip, struct in6_addr* client_ip6, struct
 
 	/* Estimate length of set to see if it fits in this pkt*/
 	set_len = sizeof(struct dnsflow_set_hdr);
-	
+
 	names_count = 
 		MIN(dns_data->num_names, DNSFLOW_NAMES_COUNT_MAX);
 	ips_count = 
@@ -1167,9 +1201,10 @@ usage(void)
 	fprintf(stderr, "\t[-Y] (add mDNS port to filter)\n");
 	/* Output options */
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
-
+	/* new improved ipv4 checksum-based filter */
+	fprintf(stderr, "\t[-c] (use ipv4 checksum for multi-proc filter, use with -M)\n");
 	fprintf(stderr, "\n  Default filter: %s\n",
-			build_pcap_filter(0, 1, 1, 0));
+		build_pcap_filter(0, 1, 1, 0, 0));
 
 	exit(1);
 }
@@ -1185,12 +1220,16 @@ main(int argc, char *argv[])
 	struct sockaddr_in	*so_addr = NULL;
 	int			encap_offset = 0;
 	int			enable_mdns = 0;
+	int			enable_ipv4_checksum_mproc_filter = 0;
 	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
 	int			is_child = 0;
 	uint16_t		sample_rate = 0;
 
-	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Y:v:h")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Yv:h:c")) != -1) {
 		switch (c) {
+		case 'c':
+			enable_ipv4_checksum_mproc_filter = 1;
+			break;
 		case 'i':
 			intf_name = optarg;
 			break;
@@ -1216,9 +1255,15 @@ main(int argc, char *argv[])
 			break;
 		case 'M':
 			auto_n_procs = atoi(optarg);
+			// automatically set to half of CPUs if desired
 			if (auto_n_procs == 0) {
-				errx(1, "invalid multiproc option -- %s",
-						optarg);
+				auto_n_procs = MAX(1, get_nprocs()/2);
+				if (auto_n_procs > MAX_MPROC_CHILDREN) {
+					warnx("Reducing num procs (%d) to static limit defined by MAX_MPROC_CHILDREN (%d). "
+					      "Recompile dnsflow.c with a larger value for MAX_MPROC_CHILDREN to utilize "
+					      "more processes.", auto_n_procs, MAX_MPROC_CHILDREN);
+					auto_n_procs = MAX_MPROC_CHILDREN;
+				}
 			}
 			break;
 		case 'p':
@@ -1302,7 +1347,7 @@ main(int argc, char *argv[])
 
 	if (filter == NULL) {
 		filter = build_pcap_filter(encap_offset, proc_i, n_procs,
-				enable_mdns);
+					   enable_mdns, enable_ipv4_checksum_mproc_filter);
 	}
 
 	/* Init pcap */
