@@ -84,7 +84,7 @@ class reader(object):
                 continue
             yield pkt
 
-#
+
 # Returns a tuple(pkt_contents, error_string).
 # error_string is None on success; on failure it contains a message
 # describing the error.
@@ -331,52 +331,6 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
 
     return (pkt, err)
 
-# Deprecated.
-def read_pcapfiles(pcap_files, pcap_filter, callback):
-    for pcap_file in pcap_files:
-        print('FILE|%s' % (pcap_file))
-        # XXX dpkt pcap doesn't support filters and there's no way to pass
-        # a gzip fd to pylibpcap. Bummer.
-        p = pcap.pcapObject()
-        p.open_offline(pcap_file)
-        # filter, optimize, netmask
-        # XXX This doesn't work with dump straight to pcap.
-        # For now use -F "" in that case.
-        p.setfilter(pcap_filter, 1, 0)
-
-        while 1:
-            rv = p.next()
-            if rv == None:
-                break
-            pktlen, buf, ts = rv
-            pkt, err = process_pkt(p.datalink(), ts, buf)
-            if err is not None:
-                print(err)
-                continue
-            callback(pkt)
-
-# Deprecated.
-def mode_livecapture(interface, pcap_filter, callback):
-    print('Capturing on', interface)
-    p = pcap.pcapObject()
-    p.open_live(interface, 65535, 1, 100)
-    # filter, optimize, netmask
-    p.setfilter(pcap_filter, 1, 0)
-
-    try:
-        while 1:
-            rv = p.next()
-            if rv != None:
-                pktlen, buf, ts = rv
-                pkt, err = process_pkt(p.datalink(), ts, buf)
-                if err is not None:
-                    print(err)
-                    continue
-                callback(pkt)
-
-    except KeyboardInterrupt:
-        print('\nshutting down')
-        print('%d packets received, %d packets dropped, %d packets dropped by interface' % p.stats())
 
 def _print_parsed_pkt(pkt):
     hdr = pkt['header']
@@ -385,8 +339,7 @@ def _print_parsed_pkt(pkt):
 
     if 'stats' in pkt:
         stats = pkt['stats']
-        print("STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1])
-            for x in list(stats.items())])))
+        print("STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1]) for x in list(stats.items())])))
     else:
         for data in pkt['data']:
             print('%s|%s|%s|%s|%s|%s|%s' % (hdr['src_ip_str'], data['resolver_ip'], data['client_ip'], tstr,
@@ -479,6 +432,7 @@ class SrcTracker(object):
         for src_id in self.srcs.keys():
             self.print_summary_src(src_id)
 
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument('-f', dest='extra_filter')
@@ -494,7 +448,8 @@ def parse_args():
 
     return args
 
-def main(argv):
+
+def main():
     args = parse_args()
 
     pcap_filter = DEFAULT_PCAP_FILTER
@@ -510,11 +465,17 @@ def main(argv):
         parse_stats = False
 
     if args.pcap_file:
-        diter = pkt_iter(pcap_file=args.pcap_file, pcap_filter=pcap_filter,
-                stats_only=parse_stats)
+        diter = pkt_iter(
+            pcap_file=args.pcap_file,
+            pcap_filter=pcap_filter,
+            stats_only=parse_stats
+        )
     else:
-        diter = pkt_iter(interface=args.interface, pcap_filter=pcap_filter,
-                stats_only=parse_stats)
+        diter = pkt_iter(
+            interface=args.interface,
+            pcap_filter=pcap_filter,
+            stats_only=parse_stats
+        )
 
     srcs = SrcTracker()
 
@@ -544,5 +505,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()
 
