@@ -1,36 +1,50 @@
 #!/usr/bin/env python
 
-'''
+"""
 See dnsflow.c header comment for packet formats.
-'''
 
-import sys, time, argparse
+Utility functions to simplify interface.
+"""
+
+import time
+import argparse
+import gzip
 import socket
-import dpkt, pcap
+import dpkt
+import pcap
 import struct
 import ipaddr
 
 DNSFLOW_FLAG_STATS = 0x0001
 DEFAULT_PCAP_FILTER = 'udp and dst port 5300'
+SNAPLEN = 65535
+TIMEOUT = 100  # milliseconds
 
-# Utility functions to simplify interface.
-# E.g.
-# for dflow in flow_iter(interface='eth0'):
-#     print dflow
-# for dflow in flow_iter(pcap_file='dnsflow.pcap'):
-#     print dflow
-def flow_iter(**kwargs):
-    rdr = reader(**kwargs)
-    return rdr.flow_iter()
+
+def get_pcap(fspec):
+    if fspec.endswith(".gz"):
+        f = gzip.open(fspec, "rb")
+    else:
+        f = open(fspec, "rb")
+
+    pcap_reader = dpkt.pcap.Reader(f)
+    return pcap_reader
+
+
 def pkt_iter(**kwargs):
-    rdr = reader(**kwargs)
+    rdr = Reader(**kwargs)
+    if rdr.pcap_file:
+        rdr.iter_pcap()  # Process DNSFlow PCAP
+    else:
+        rdr.iter_interface()  # Live-Capture DNSFlow
     return rdr.pkt_iter()
 
+
 # Top-level interface for reading/capturing dnsflow. Instantiate object,
-# then iterate using flow_iter() or pkt_iter().
-class reader(object):
+# then iterate using pkt_iter().
+class Reader(object):
     def __init__(self, interface=None, pcap_file=None,
-            pcap_filter=DEFAULT_PCAP_FILTER, stats_only=False):
+                 pcap_filter=DEFAULT_PCAP_FILTER, stats_only=False):
         if interface is None and pcap_file is None:
             raise Exception('Specify interface or pcap_file')
         if interface is not None and pcap_file is not None:
@@ -41,31 +55,36 @@ class reader(object):
         self.pcap_filter = pcap_filter
         self.stats_only = stats_only
 
-        self._pcap = pcap.pcapObject()
+        self.pcap = None
 
-        if self.pcap_file is not None:
-            # XXX dpkt pcap doesn't support filters and there's no way to pass
-            # a gzip fd to pylibpcap. Bummer.
-            self._pcap.open_offline(pcap_file)
+        if self.pcap_file:
+            # TODO: how to filter in this case
+            self.pcap = get_pcap(self.pcap_file)
         else:
             # Interface
-            # device, snaplen, promisc, to_ms
-            self._pcap.open_live(interface, 65535, 1, 100)
-        # filter, optimize, netmask
-        self._pcap.setfilter(self.pcap_filter, 1, 0)
+            # TODO: extract constants
+            self.pcap = pcap.pcap(name=interface, snaplen=SNAPLEN, promisc=True, timeout_ms=TIMEOUT)
+            # TODO: prev passed netmask=0 in self._pcap.setfilter(self.pcap_filter, 1, 0)
+            self.pcap.setfilter(self.pcap_filter, optimize=1)
 
-    # Iterate over individual dnsflow records (multiple per packet).
-    # Skips stats pkts.
-    def flow_iter(self):
-        for pkt in self.pkt_iter():
-            ts = pkt['header']['timestamp']
-            if 'data' not in pkt:
-                # stats pkt
-                continue
-            for record in pkt['data']:
-                yield ts, record
+    def iter_interface(self):
+        print('Listening on %s: %s' % (self.pcap.name, self.pcap.filter))
+        self.pcap.loop(0, self.handle_frame)
+        # TODO: make sure exit on Timeout or KeyboardInterrupt
+
+    def iter_pcap(self):
+        for ts, frame in self.pcap:
+            self.handle_frame(ts, frame)
+
+    def handle_frame(self, ts, frame):
+        # TODO: filter
+        pkt, err = process_pkt(self.pcap.datalink(), ts, frame, stats_only=self.stats_only)
+        if err is not None:
+            print(err)
+        return pkt
 
     # Iterate over dnsflow pkts.
+    # TODO: get rid of once has been transferred
     def pkt_iter(self):
         while 1:
             rv = self._pcap.next()
