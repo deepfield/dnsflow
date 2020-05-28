@@ -80,7 +80,7 @@ class reader(object):
             pkt, err = process_pkt(self._pcap.datalink(), ts, buf,
                     stats_only=self.stats_only)
             if err is not None:
-                print err
+                print(err)
                 continue
             yield pkt
 
@@ -132,7 +132,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
     try:
         vers, sets_count, flags, seq_num = struct.unpack(fmt,
                 dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
-    except struct.error, e:
+    except struct.error as e:
         err = 'PARSE_ERROR|%s|%s' % (fmt, e)
         return (pkt, err)
     cp += struct.calcsize(fmt)
@@ -160,7 +160,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
         try:
             stats = struct.unpack(fmt,
                     dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
-        except struct.error, e:
+        except struct.error as e:
             err = 'HEADER_PARSE_ERROR|%s|%s' % (fmt, e)
             return (pkt, err)
         sp = {}
@@ -243,7 +243,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
                             dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
                     client_ip, names_count, ips_count, names_len = vals
 
-            except struct.error, e:
+            except struct.error as e:
                 err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                 return (pkt, err)
             cp += struct.calcsize(fmt)
@@ -256,7 +256,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
             try:
                 name_set = struct.unpack(fmt,
                         dnsflow_pkt[cp:cp + struct.calcsize(fmt)])[0]
-            except struct.error, e:
+            except struct.error as e:
                 err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                 return (pkt, err)
             cp += struct.calcsize(fmt)
@@ -294,7 +294,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
             try:
                 ips = struct.unpack(fmt,
                         dnsflow_pkt[cp:cp + struct.calcsize(fmt)])
-            except struct.error, e:
+            except struct.error as e:
                 err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                 return (pkt, err)
             cp += struct.calcsize(fmt)
@@ -307,7 +307,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
                     try:
                         ipval = list(struct.unpack(fmt,
                                 dnsflow_pkt[cp:cp + struct.calcsize(fmt)]))
-                    except struct.error, e:
+                    except struct.error as e:
                         err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                         return (pkt, err)
                     cp += struct.calcsize(fmt)
@@ -334,7 +334,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
 # Deprecated.
 def read_pcapfiles(pcap_files, pcap_filter, callback):
     for pcap_file in pcap_files:
-        print 'FILE|%s' % (pcap_file)
+        print('FILE|%s' % (pcap_file))
         # XXX dpkt pcap doesn't support filters and there's no way to pass
         # a gzip fd to pylibpcap. Bummer.
         p = pcap.pcapObject()
@@ -351,13 +351,13 @@ def read_pcapfiles(pcap_files, pcap_filter, callback):
             pktlen, buf, ts = rv
             pkt, err = process_pkt(p.datalink(), ts, buf)
             if err is not None:
-                print err
+                print(err)
                 continue
             callback(pkt)
 
 # Deprecated.
 def mode_livecapture(interface, pcap_filter, callback):
-    print 'Capturing on', interface
+    print('Capturing on', interface)
     p = pcap.pcapObject()
     p.open_live(interface, 65535, 1, 100)
     # filter, optimize, netmask
@@ -370,13 +370,13 @@ def mode_livecapture(interface, pcap_filter, callback):
                 pktlen, buf, ts = rv
                 pkt, err = process_pkt(p.datalink(), ts, buf)
                 if err is not None:
-                    print err
+                    print(err)
                     continue
                 callback(pkt)
 
     except KeyboardInterrupt:
-        print '\nshutting down'
-        print '%d packets received, %d packets dropped, %d packets dropped by interface' % p.stats()
+        print('\nshutting down')
+        print('%d packets received, %d packets dropped, %d packets dropped by interface' % p.stats())
 
 def _print_parsed_pkt(pkt):
     hdr = pkt['header']
@@ -385,12 +385,12 @@ def _print_parsed_pkt(pkt):
 
     if 'stats' in pkt:
         stats = pkt['stats']
-        print "STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1])
-            for x in stats.items()]))
+        print("STATS|%s" % ('|'.join(['%s:%d' % (x[0], x[1])
+            for x in list(stats.items())])))
     else:
         for data in pkt['data']:
-            print '%s|%s|%s|%s|%s|%s|%s' % (hdr['src_ip_str'], data['resolver_ip'], data['client_ip'], tstr,
-                    ','.join(data['names']), ','.join(data['ips']), ','.join(data['ip6s']))
+            print('%s|%s|%s|%s|%s|%s|%s' % (hdr['src_ip_str'], data['resolver_ip'], data['client_ip'], tstr,
+                    ','.join(data['names']), ','.join(data['ips']), ','.join(data['ip6s'])))
 
 
 class SrcTracker(object):
@@ -423,11 +423,11 @@ class SrcTracker(object):
                 src['stats_last'] = pkt['stats']
                 src['stats_delta_last'] = {}
                 src['stats_delta_total'] = {}
-                for k in pkt['stats'].iterkeys():
+                for k in pkt['stats'].keys():
                     if k == 'sample_rate':
                         continue
                     src['stats_delta_total'][k] = 0
-            for k in pkt['stats'].iterkeys():
+            for k in pkt['stats'].keys():
                 if k == 'sample_rate':
                     continue
                 src['stats_delta_last'][k] = pkt['stats'][k] - src['stats_last'][k]
@@ -458,25 +458,25 @@ class SrcTracker(object):
     def print_summary_src(self, src_id):
         src = self.srcs[src_id]
         ts_delta = src['last_timestamp'] - src['first_timestamp']
-        print '%s:%s' % (src_id[0], src_id[1])
-        print '  %s' % (' '.join(['%s=%d' % (k, src[k])
-            for k in ['n_data_pkts', 'n_records', 'n_stats_pkts']]))
+        print('%s:%s' % (src_id[0], src_id[1]))
+        print('  %s' % (' '.join(['%s=%d' % (k, src[k])
+            for k in ['n_data_pkts', 'n_records', 'n_stats_pkts']])))
         if ts_delta > 0:
-            print '  %s' % (' '.join(['%s/s=%.2f' % (k, src[k]/ts_delta)
-                for k in ['n_data_pkts', 'n_records', 'n_stats_pkts']]))
+            print('  %s' % (' '.join(['%s/s=%.2f' % (k, src[k]/ts_delta)
+                for k in ['n_data_pkts', 'n_records', 'n_stats_pkts']])))
         if 'stats_delta_total' in src:
-            print '  %s' % (' '.join(['%s=%d' % (x[0], x[1])
-                for x in src['stats_delta_total'].items()]))
+            print('  %s' % (' '.join(['%s=%d' % (x[0], x[1])
+                for x in list(src['stats_delta_total'].items())])))
             if ts_delta > 0:
-                print '  %s' % (' '.join(['%s/s=%.2f' %
+                print('  %s' % (' '.join(['%s/s=%.2f' %
                     (x[0], x[1]/ts_delta)
-                    for x in src['stats_delta_total'].items()]))
-        print '  %s' % (' '.join(['%s=%d' % (x[0], x[1])
-            for x in src['seq'].items()]))
+                    for x in list(src['stats_delta_total'].items())])))
+        print('  %s' % (' '.join(['%s=%d' % (x[0], x[1])
+            for x in list(src['seq'].items())])))
 
 
     def print_summary(self):
-        for src_id in self.srcs.iterkeys():
+        for src_id in self.srcs.keys():
             self.print_summary_src(src_id)
 
 def parse_args():
@@ -518,7 +518,7 @@ def main(argv):
 
     srcs = SrcTracker()
 
-    print '%s|%s|%s|%s|%s|%s|%s' % ("dnsflow server", "resolver ip", "client ip", "time", "names", "ipv4", "ipv6")
+    print('%s|%s|%s|%s|%s|%s|%s' % ("dnsflow server", "resolver ip", "client ip", "time", "names", "ipv4", "ipv6"))
 
     try:
         for cnt, pkt in enumerate(diter):
@@ -532,15 +532,16 @@ def main(argv):
             elif args.src_summary:
                 if cnt != 0 and cnt % 100000 == 0:
                     srcs.print_summary()
-                    print '-'*40
+                    print('-'*40)
             else:
                 _print_parsed_pkt(pkt)
     except KeyboardInterrupt:
-        print '\nSummary:'
+        print('\nSummary:')
         srcs.print_summary()
     else:
-        print '\nSummary:'
+        print('\nSummary:')
         srcs.print_summary()
+
 
 if __name__ == '__main__':
     main(sys.argv)
