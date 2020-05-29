@@ -95,7 +95,7 @@ small setting for M, and then double it until the total processing
 time no longer decreases.
 
 ## Install DNSFlow Reader Dependencies
-The dnsflow reader is a python script with the following dependencies:
+The dnsflow reader is a python3 script with the following dependencies:
 
 Install the python package installer pip (via apt on Ubuntu).
 ```
@@ -107,11 +107,13 @@ Install python pip modules for dpkt and ipaddr.
 sudo pip install dpkt ipaddr
 ```
 
-Download [python-libpcap](http://sourceforge.net/projects/pylibpcap/files/pylibpcap/0.6.4).
+Install [pypcap](https://github.com/pynetwork/pypcap). 
+
+Note: Previously (with python2) the [python-libpcap](http://sourceforge.net/projects/pylibpcap/files/pylibpcap/0.6.4)
+was used, and both modules are imported into python with the same name. 
+So, the python-libcpap may need to first be uninstalled to prevent the naming conflict.
 ```
-tar xvfz pylibpcap-0.6.4.tar.gz
-cd pylibpcap-0.6.4
-sudo python ./setup.py install
+sudo pip install pypcap
 ```
 
 ## Building DNSFlow daemon
