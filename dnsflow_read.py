@@ -5,7 +5,6 @@ See dnsflow.c header comment for packet formats.
 
 Utility functions to simplify interface.
 """
-
 import time
 import argparse
 import gzip
@@ -14,11 +13,14 @@ import dpkt
 import pcap
 import struct
 import ipaddr
+from dpkt.ip import IP_PROTO_UDP
+from dpkt.udp import UDP
 
 DNSFLOW_FLAG_STATS = 0x0001
-DEFAULT_PCAP_FILTER = 'udp and dst port 5300'
+DEFAULT_PCAP_FILTER = "udp and dst port 5300"
 SNAPLEN = 65535
 TIMEOUT = 100  # milliseconds
+DNSFLOW_PORT = 5300
 
 
 def get_pcap(fspec):
@@ -32,12 +34,10 @@ def get_pcap(fspec):
 
 
 def pkt_iter(**kwargs):
+    """ Iterate over dnsflow pkts. """
     rdr = Reader(**kwargs)
-    if rdr.pcap_file:
-        rdr.iter_pcap()  # Process DNSFlow PCAP
-    else:
-        rdr.iter_interface()  # Live-Capture DNSFlow
-    return rdr.pkt_iter()
+    res = rdr.pcap.iter_interface() if rdr.live_capture else rdr.pcap.iter_pcap()
+    return res
 
 
 # Top-level interface for reading/capturing dnsflow. Instantiate object,
@@ -46,62 +46,56 @@ class Reader(object):
     def __init__(self, interface=None, pcap_file=None,
                  pcap_filter=DEFAULT_PCAP_FILTER, stats_only=False):
         if interface is None and pcap_file is None:
-            raise Exception('Specify interface or pcap_file')
+            raise Exception("Specify interface or pcap_file")
         if interface is not None and pcap_file is not None:
-            raise Exception('Specify only interface or pcap_file')
+            raise Exception("Specify only interface or pcap_file")
 
         self.interface = interface
         self.pcap_file = pcap_file
         self.pcap_filter = pcap_filter
         self.stats_only = stats_only
-
+        self.live_capture = bool(not self.pcap_file)
         self.pcap = None
 
         if self.pcap_file:
-            # TODO: how to filter in this case
             self.pcap = get_pcap(self.pcap_file)
+            if pcap_filter != DEFAULT_PCAP_FILTER:
+                msg = "Only support default filter {} when reading from PCAP.".format(DEFAULT_PCAP_FILTER)
+                raise ValueError(msg)  # TODO: add handler for this
         else:
             # Interface
-            # TODO: extract constants
             self.pcap = pcap.pcap(name=interface, snaplen=SNAPLEN, promisc=True, timeout_ms=TIMEOUT)
             # TODO: prev passed netmask=0 in self._pcap.setfilter(self.pcap_filter, 1, 0)
             self.pcap.setfilter(self.pcap_filter, optimize=1)
 
+    # TODO: make sure exit on Timeout or KeyboardInterrupt
     def iter_interface(self):
+        """ Live-capture packets and process them. """
         print('Listening on %s: %s' % (self.pcap.name, self.pcap.filter))
-        self.pcap.loop(0, self.handle_frame)
-        # TODO: make sure exit on Timeout or KeyboardInterrupt
+        while True:
+            raw = self.pcap.next()
+            if raw is not None:
+                ts, frame = raw  # TODO: confirm this?
+                res = self.handle_frame(ts, frame)
+                if res:
+                    yield res
 
     def iter_pcap(self):
+        """ Iterate through pcap file and process packets. """
         for ts, frame in self.pcap:
-            self.handle_frame(ts, frame)
+            res = self.handle_frame(ts, frame, filter=True)
+            if res:
+                yield res
 
-    def handle_frame(self, ts, frame):
-        # TODO: filter
-        pkt, err = process_pkt(self.pcap.datalink(), ts, frame, stats_only=self.stats_only)
+    def handle_frame(self, ts, frame, filter=False):  # TODO: change filter arg name
+        pkt, err = process_pkt(
+            self.pcap.datalink(), ts, frame, stats_only=self.stats_only, filter=filter
+        )
         if err is not None:
             print(err)
-        return pkt
+            pkt = None
 
-    # Iterate over dnsflow pkts.
-    # TODO: get rid of once has been transferred
-    def pkt_iter(self):
-        while 1:
-            rv = self._pcap.next()
-            if rv == None:
-                if self.pcap_file is not None:
-                    # eof
-                    break
-                else:
-                    # interface, hit to_ms
-                    continue
-            pktlen, buf, ts = rv
-            pkt, err = process_pkt(self._pcap.datalink(), ts, buf,
-                    stats_only=self.stats_only)
-            if err is not None:
-                print(err)
-                continue
-            yield pkt
+        return pkt
 
 
 # Returns a tuple(pkt_contents, error_string).
@@ -110,9 +104,12 @@ class Reader(object):
 # pkt_contents is a dict containing the unmarshaled data from the packet. It
 # may be incomplete or empty on error.
 # stats_only - set to True to parse stats pkts and headers only of data pkts.
-def process_pkt(dl_type, ts, buf, stats_only=False):
+def process_pkt(dl_type, ts, buf, stats_only=False, filter=False):
+    # TODO: validate filtering
+    # TODO: refactor
     pkt = {}
     err = None
+    ip_pkt = None
     if dl_type == dpkt.pcap.DLT_NULL:
         # Loopback
         try:
@@ -122,13 +119,23 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
             return (pkt, err)
         if lo.family == socket.AF_UNSPEC:
             # dnsflow dumped straight to pcap
+            if filter:
+                # Dont process in this case if 'filter on' since no way to filter
+                return (None, None)
             dnsflow_pkt = lo.data
-            ip_pkt = None
             src_ip = '0.0.0.0'
             src_port = 0
         elif lo.family == socket.AF_INET:
             # dl, ip, udp, dnsflow_pkt
-            dnsflow_pkt = lo.data.data.data
+            udp = lo.data.data
+            if filter:
+                if not type(udp) == UDP:
+                    return (None, None)  # TODO: log num filtered?
+                udp = lo.data.data
+                if udp.dport != DNSFLOW_PORT:
+                    return (None, None)
+
+            dnsflow_pkt = udp.data
             ip_pkt = lo.data
             src_ip = socket.inet_ntop(socket.AF_INET, ip_pkt.src)
             src_port = ip_pkt.data.sport
@@ -139,6 +146,18 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
         except:
             err = 'ETHERNET-PARSE-FAILED|%s' % (buf)
             return (pkt, err)
+        if filter:
+            # TODO: play with on live-capture to validate
+            if eth.type != dpkt.ethernet.ETH_TYPE_IP:
+                return (None, None)
+            ip = eth.data
+            if ip.p != IP_PROTO_UDP:
+                return (None, None)
+            udp = ip.data
+            # TODO: check this live
+            if udp.dport != DNSFLOW_PORT:
+                return (None, None)
+
         dnsflow_pkt = eth.data.data.data
         ip_pkt = eth.data
         src_ip = socket.inet_ntop(socket.AF_INET, ip_pkt.src)
@@ -274,7 +293,7 @@ def process_pkt(dl_type, ts, buf, stats_only=False):
 
             try:
                 name_set = struct.unpack(fmt,
-                        dnsflow_pkt[cp:cp + struct.calcsize(fmt)])[0]
+                        dnsflow_pkt[cp:cp + struct.calcsize(fmt)])[0].decode("utf-8")
             except struct.error as e:
                 err = 'DATA_PARSE_ERROR|%s|%s' % (fmt, e)
                 return (pkt, err)
