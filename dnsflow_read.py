@@ -10,11 +10,20 @@ import argparse
 import gzip
 import socket
 import dpkt
-import pcap
 import struct
+import sys
 import ipaddr
 from dpkt.ip import IP_PROTO_UDP
 from dpkt.udp import UDP
+
+try:
+    import pcap
+except ImportError:
+    print(
+        "Could not import the 'pcap' module.\n"
+        "Please see README for dependency instructions and ensure pypcap (not python-libpcap) is installed."
+    )
+    sys.exit(-1)
 
 DNSFLOW_FLAG_STATS = 0x0001
 DEFAULT_PCAP_FILTER = "udp and dst port 5300"

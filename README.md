@@ -107,7 +107,11 @@ Install python pip modules for dpkt and ipaddr.
 sudo pip install dpkt ipaddr
 ```
 
-Install [pypcap](https://github.com/pynetwork/pypcap).
+Install [pypcap](https://github.com/pynetwork/pypcap). 
+
+Note: Previously (with python2) the [python-libpcap](http://sourceforge.net/projects/pylibpcap/files/pylibpcap/0.6.4)
+was used, and both modules are imported into python with the same name. 
+So, the python-libcpap may need to first be uninstalled to prevent the naming conflict.
 ```
 sudo pip install pypcap
 ```
