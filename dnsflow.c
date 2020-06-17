@@ -232,9 +232,11 @@ static struct event		sigterm_ev, sigint_ev, sigchld_ev;
 /* config */
 
 /* pcap-record dest port (*network* byte order) */
+static int pcap_record_dst_port_enabled = 0;
 static uint16_t pcap_record_dst_port = 0;
 
 /* jmirror dest port (*network* byte order) - typically 30030 */
+static int jmirror_dst_port_enabled = 0;
 static uint16_t jmirror_dst_port = 0;
 
 static int 			udp_num_dsts = 0;
@@ -1074,11 +1076,11 @@ dnsflow_dcap_cb(struct timeval *tv, int pkt_len, char *ip_pkt, void *user)
 	remaining -= udp_data - ip_pkt;
 
 	/* Handle various encapsulations. */
-	if (udphdr->uh_dport == pcap_record_dst_port) {
+	if (pcap_record_dst_port_enabled && (udphdr->uh_dport == pcap_record_dst_port)) {
 		/* pcap header, eth, ip, udp, dns */
 		ip_encap_offset = sizeof(struct pcap_sf_pkthdr)
 			+ sizeof(struct ether_header);
-	} else if (udphdr->uh_dport == jmirror_dst_port) {
+	} else if (jmirror_dst_port_enabled && (udphdr->uh_dport == jmirror_dst_port)) {
 		/* jmirror, ip, udp, dns */
 		ip_encap_offset = sizeof(struct jmirror_hdr);
 	}
@@ -1234,6 +1236,7 @@ main(int argc, char *argv[])
 			intf_name = optarg;
 			break;
 		case 'J':
+			jmirror_dst_port_enabled = 1;
 			jmirror_dst_port = htons(atoi(optarg));
 			if (filter == NULL) {
 				/* udp, jmirror, ip, udp, dns */
@@ -1294,6 +1297,7 @@ main(int argc, char *argv[])
 			}
 			break;
 		case 'X':
+			pcap_record_dst_port_enabled = 1;
 			pcap_record_dst_port = htons(atoi(optarg));
 			if (filter == NULL) {
 				/* udp, pcap header, eth, ip, udp, dns */
