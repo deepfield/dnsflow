@@ -615,7 +615,12 @@ udp_check(int pkt_len, struct ip *ip, struct ip6_hdr *ip6)
 				return (NULL);
 			}
 			next_hdr = ip6_ext->ip6e_nxt;
-			offset = ip6_ext->ip6e_len;
+			offset = (ip6_ext->ip6e_len + 1)*8;
+			// this may occur if we are dealing with garbage data,
+			// which may cause this loop to run forever
+			if (offset <= 0) {
+				return (NULL);
+			}
 			ip_hdr_len +=offset;
 			ip6_ext = (struct ip6_ext *)(((caddr_t)ip6_ext) + offset);
 		}
