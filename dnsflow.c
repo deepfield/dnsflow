@@ -607,6 +607,18 @@ udp_check(int pkt_len, struct ip *ip, struct ip6_hdr *ip6)
 		}
 		udphdr = (struct udphdr *) (((u_char *) ip) + ip_hdr_len);
 	} else if (ip6) {
+		// Note that this loop does not provide much utility
+		// when the default base filter using `src port 53` is
+		// in use because the pcap-filter does not know to
+		// offset to the correct location to check for
+		// UDP.src_port when additional extension headers
+		// appear before the UDP section. Thus, we would
+		// likely never encounter a valid IPv6/UDP packet that
+		// would need to enter the while-loop
+		// below. Fortunately, most (if not all) IPv6/UDP/DNS
+		// responses that we are collecting do not have
+		// additional extension headers. We leave this loop in
+		// for exploratory analysis with custom filters.
 		next_hdr = ip6->ip6_nxt;
 		ip_hdr_len = sizeof(struct ip6_hdr);
 		ip6_ext = (struct ip6_ext *)((struct ip6_hdr *)(ip6 + 1));
