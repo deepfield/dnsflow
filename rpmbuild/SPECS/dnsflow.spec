@@ -1,11 +1,11 @@
 Name:           dnsflow
-Version:        1.1
+Version:        1.4
 Release:        1%{?dist}
 Summary:        Convert DNS pcap to compressed DNSFlow
 
 License:        GPL
 URL:            https://github.com/deepfield/dnsflow
-Source0:        dnsflow-1.1.tar.gz
+Source0:        dnsflow-1.4.tar.gz
 
 Requires: ldns-devel libpcap-devel libevent-devel openssl-devel
 Requires(post): info
