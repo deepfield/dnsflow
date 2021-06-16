@@ -1500,24 +1500,27 @@ main(int argc, char *argv[])
 	/* Pcap/event loop */
 	if (pcap_file_read != NULL) {
 		dcap_loop_all(dcap);
-		dcap_close(dcap);
 		dnsflow_pkt_send_data();	/* Send last pkt. */
+		if (pdump != NULL) {
+		    pcap_dump_close(pdump);
+		    pcap_close(pc_dump);
+		}
+		free(data_buf);
+		ds = dcap_get_stats(dcap);
+		dnsflow_print_stats(ds);
+		dcap_close(dcap);
+		dcap = NULL;
 	} else {
 		rv = event_dispatch();
+		// Note that this code will typically not execute, as
+		// there is a signal handler and clean shutdown
+		// callback used during the event loop. If the
+		// event_dispatch function ever returns, it means
+		// there was a serious error.
 		dcap_close(dcap);
+		dcap = NULL;
 		errx(1, "event_dispatch terminated: %d", rv);
 	}
 
-	if (pdump != NULL) {
-		pcap_dump_close(pdump);
-		pcap_close(pc_dump);
-	}
-
-	free(data_buf);
-
-	ds = dcap_get_stats(dcap);
-	dnsflow_print_stats(ds);
-
 	return (0);
 }
-
