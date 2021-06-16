@@ -102,6 +102,10 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+#define DNSFLOW_FILTER_MAX_SRC_PORTS	10
+#define DNSFLOW_PORT_SLOT_UNUSED	-1
+static int dnsflow_filter_src_ports[DNSFLOW_FILTER_MAX_SRC_PORTS];
+static int dnsflow_port_override_used = 0;
 
 #define DNSFLOW_MAX_PARSE		255
 #define DNSFLOW_PKT_BUF_SIZE		65535
@@ -405,7 +409,8 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, 
 
 
 	/* Buffers to build pcap filter */
-	char port_filter[1024];
+	int *p_filter_port = NULL;
+	char port_filter[1024], *pf_cp;
 	char dns_resp_filter[1024];
 	char multi_proc_filter[1024];
 	/* The final filter returned in static buf. */
@@ -421,7 +426,30 @@ build_pcap_filter(int encap_offset, int proc_i, int num_procs, int enable_mdns, 
 	}
 
 	/* Port filter - Match src port 53 (and optionally 5353). */
-	if (enable_mdns) {
+	if (dnsflow_port_override_used) {
+		pf_cp = port_filter;
+		p_filter_port = dnsflow_filter_src_ports;
+		while (p_filter_port != dnsflow_filter_src_ports + DNSFLOW_FILTER_MAX_SRC_PORTS)   {
+			if (*p_filter_port != DNSFLOW_PORT_SLOT_UNUSED) {
+				if (p_filter_port == dnsflow_filter_src_ports) {
+					pf_cp += sprintf(pf_cp, "(src port %d", *p_filter_port);
+				} else {
+					pf_cp += sprintf(pf_cp, " or src port %d", *p_filter_port);
+				}
+				// handle edge case with -Y command-line option
+				if (*p_filter_port == 5353) {
+					enable_mdns = 0;
+				}
+			}
+			++p_filter_port;
+		}
+		// if this is still true, it has not already been added above
+		if (enable_mdns) {
+			pf_cp += sprintf(pf_cp, " or src port 5353");
+		}
+		*(pf_cp++) = ')';
+		*pf_cp = '\0';
+	} else if (enable_mdns) {
 		snprintf(port_filter, sizeof(port_filter),
 			 "(src port 53 or src port 5353)");
 	} else {
@@ -1218,6 +1246,7 @@ usage(void)
 	fprintf(stderr, "\t[-X pcap_record_recv_port] "
 			"[-J jmirror_port (usually 30030)]\n");
 	fprintf(stderr, "\t[-Y] (add mDNS port to filter)\n");
+	fprintf(stderr, "\t[-d] (list individual ports to filter, can be used multiple times)\n");
 	/* Output options */
 	fprintf(stderr, "\t[-u udp_dst] [-w pcap_file_dst]\n");
 	/* new improved ipv4 checksum-based filter */
@@ -1243,8 +1272,14 @@ main(int argc, char *argv[])
 	uint32_t		n_procs = 1, proc_i = 1, auto_n_procs = 0;
 	int			is_child = 0;
 	uint16_t		sample_rate = 0;
+	long tmp_filter_port;
+	int *p_next_filter_port;
+	p_next_filter_port = dnsflow_filter_src_ports;
+	while (p_next_filter_port != dnsflow_filter_src_ports + DNSFLOW_FILTER_MAX_SRC_PORTS) {
+		*(p_next_filter_port++) = DNSFLOW_PORT_SLOT_UNUSED;
+	}
 
-	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Yv:h:c")) != -1) {
+	while ((c = getopt(argc, argv, "i:J:r:f:m:M:pP:s:u:w:X:Yv:h:cd:")) != -1) {
 		switch (c) {
 		case 'c':
 			enable_ipv4_checksum_mproc_filter = 1;
@@ -1328,12 +1363,33 @@ main(int argc, char *argv[])
 		case 'w':
 			pcap_file_write = optarg;
 			break;
+		case 'd':
+			tmp_filter_port = strtol(optarg, NULL, 0);
+			if ((errno) || (tmp_filter_port < 0) || (tmp_filter_port > USHRT_MAX)) {
+				errx(1, "values for dns src port filter must be in range [0, %d]", USHRT_MAX);
+			}
+			p_next_filter_port = dnsflow_filter_src_ports;
+			while (1) {
+				if (p_next_filter_port == dnsflow_filter_src_ports + DNSFLOW_FILTER_MAX_SRC_PORTS) {
+					errx(1, "at most %d unique dns filter ports can be assigned", DNSFLOW_FILTER_MAX_SRC_PORTS);
+				}
+				if (*p_next_filter_port == (int)tmp_filter_port) {
+					break;
+				} else if (*p_next_filter_port == DNSFLOW_PORT_SLOT_UNUSED) {
+					dnsflow_port_override_used = 1;
+					*p_next_filter_port = (int)tmp_filter_port;
+					break;
+				}
+				++p_next_filter_port;
+			}
+			break;
 		case 'h':
 		default:
 			usage();
 			/* NOTREACHED */
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -1376,7 +1432,6 @@ main(int argc, char *argv[])
 		dcap = dcap_init_file(pcap_file_read, filter, dnsflow_dcap_cb);
 		_log("reading from file %s, filter %s", pcap_file_read,
 				filter);
-
 	} else {
 		dcap = dcap_init_live(intf_name, promisc, filter,
 				dnsflow_dcap_cb);
