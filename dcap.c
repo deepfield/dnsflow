@@ -76,6 +76,9 @@ datalink_offset(int i)
 	case DLT_FDDI:
 		i = 21;
 		break;
+	case DLT_LINUX_SLL:
+		i = 16;
+		break;
 #ifdef DLT_LOOP
 	case DLT_LOOP:
 #endif
@@ -131,8 +134,9 @@ dcap_pcap_cb(u_char *user, const struct pcap_pkthdr *pkthdr, const u_char *pkt)
 
 	if(dl != DLT_NULL 
 #ifdef DLT_LOOP
-		&& dl != DLT_LOOP)
+		&& dl != DLT_LOOP
 #endif
+		&& dl != DLT_LINUX_SLL)
 	{
 		eh = (struct ether_header *)p;
 		ether_type = ntohs(eh->ether_type);
