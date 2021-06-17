@@ -385,5 +385,3 @@ dcap_get_stats(struct dcap *dcap)
 
 	return (&ds);
 }
-
-
