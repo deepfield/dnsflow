@@ -773,7 +773,8 @@ dnsflow_dns_check(int pkt_len, char *dns_pkt)
 	 * CNAME queries as well, but those aren't generally used. */
 	q_rr = ldns_rr_list_rr(ldns_pkt_question(lp), 0);
 	if (ldns_rr_get_type(q_rr) != LDNS_RR_TYPE_A && 
-		ldns_rr_get_type(q_rr) != LDNS_RR_TYPE_AAAA) {
+	    ldns_rr_get_type(q_rr) != LDNS_RR_TYPE_AAAA &&
+	    ldns_rr_get_type(q_rr) != LDNS_RR_TYPE_ANY) {
 		ldns_pkt_free(lp);
 		return (NULL);
 	}
